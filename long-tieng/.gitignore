@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Job + xuất (nặng, không đưa GitHub)
+jobs/
+out/
+*.mp4
+*.wav
+
+# Key dịch — không commit
+settings.json
+
+# Model weights
+models/
+
+# Clone giọng (file lớn / mẫu cá nhân)
+voice/*
+!voice/.gitkeep

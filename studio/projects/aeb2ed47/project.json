@@ -1,0 +1,271 @@
+{
+  "id": "aeb2ed47",
+  "name": "Demo Short",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "bg_color": "#0B0B12",
+  "script": "I spent three months building my first game. Everyone said the engine was too heavy. But the truth is simple. You only pay for the features you actually use.",
+  "voice": {
+    "engine": "kokoro",
+    "voice": "【EN Devlog Trẻ / Độc quyền】blend_young_devlog",
+    "speed": 1.0,
+    "style": "Devlog / Chill"
+  },
+  "caption": {
+    "font": "Impact",
+    "size": 120,
+    "color": "#FFFFFF",
+    "emph_color": "#2EE6FF",
+    "stroke_color": "#000000",
+    "stroke_width": 10,
+    "y_pct": 55.0,
+    "max_words": 2,
+    "uppercase": false,
+    "effect": "pop_in"
+  },
+  "words": [
+    {
+      "text": "I",
+      "start": 0.0,
+      "end": 0.12,
+      "emph": false
+    },
+    {
+      "text": "spent",
+      "start": 0.12,
+      "end": 0.3,
+      "emph": false
+    },
+    {
+      "text": "three",
+      "start": 0.3,
+      "end": 0.58,
+      "emph": false
+    },
+    {
+      "text": "months",
+      "start": 0.58,
+      "end": 0.82,
+      "emph": false
+    },
+    {
+      "text": "building",
+      "start": 0.82,
+      "end": 1.18,
+      "emph": true
+    },
+    {
+      "text": "my",
+      "start": 1.18,
+      "end": 1.44,
+      "emph": true
+    },
+    {
+      "text": "first",
+      "start": 1.44,
+      "end": 1.78,
+      "emph": true
+    },
+    {
+      "text": "game.",
+      "start": 1.78,
+      "end": 2.08,
+      "emph": false
+    },
+    {
+      "text": "Everyone",
+      "start": 2.52,
+      "end": 2.86,
+      "emph": false
+    },
+    {
+      "text": "said",
+      "start": 2.86,
+      "end": 3.14,
+      "emph": false
+    },
+    {
+      "text": "the",
+      "start": 3.14,
+      "end": 3.3,
+      "emph": true
+    },
+    {
+      "text": "engine",
+      "start": 3.3,
+      "end": 3.58,
+      "emph": false
+    },
+    {
+      "text": "was",
+      "start": 3.58,
+      "end": 3.82,
+      "emph": false
+    },
+    {
+      "text": "too",
+      "start": 3.82,
+      "end": 4.02,
+      "emph": false
+    },
+    {
+      "text": "heavy,",
+      "start": 4.02,
+      "end": 4.3,
+      "emph": false
+    },
+    {
+      "text": "but",
+      "start": 4.64,
+      "end": 4.78,
+      "emph": false
+    },
+    {
+      "text": "the",
+      "start": 4.78,
+      "end": 4.92,
+      "emph": false
+    },
+    {
+      "text": "truth",
+      "start": 4.92,
+      "end": 5.22,
+      "emph": false
+    },
+    {
+      "text": "is",
+      "start": 5.22,
+      "end": 5.42,
+      "emph": false
+    },
+    {
+      "text": "simple.",
+      "start": 5.42,
+      "end": 5.8,
+      "emph": false
+    },
+    {
+      "text": "You",
+      "start": 6.26,
+      "end": 6.34,
+      "emph": false
+    },
+    {
+      "text": "only",
+      "start": 6.34,
+      "end": 6.54,
+      "emph": false
+    },
+    {
+      "text": "pay",
+      "start": 6.54,
+      "end": 6.76,
+      "emph": false
+    },
+    {
+      "text": "for",
+      "start": 6.76,
+      "end": 6.96,
+      "emph": false
+    },
+    {
+      "text": "the",
+      "start": 6.96,
+      "end": 7.06,
+      "emph": false
+    },
+    {
+      "text": "features",
+      "start": 7.06,
+      "end": 7.42,
+      "emph": true
+    },
+    {
+      "text": "you",
+      "start": 7.42,
+      "end": 7.7,
+      "emph": false
+    },
+    {
+      "text": "actually",
+      "start": 7.7,
+      "end": 8.18,
+      "emph": true
+    },
+    {
+      "text": "use.",
+      "start": 8.18,
+      "end": 8.52,
+      "emph": false
+    }
+  ],
+  "voice_file": "media/voice.wav",
+  "clips": [
+    {
+      "id": "66c60b9e",
+      "track": "video",
+      "src": "media/a.png",
+      "start": 0.0,
+      "dur": 3.0,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "none",
+      "x_pct": 50.0,
+      "y_pct": 30.0,
+      "scale_pct": 35.0
+    },
+    {
+      "id": "42fc46e4",
+      "track": "video",
+      "src": "media/c.mp4",
+      "start": 3.0,
+      "dur": 2.5,
+      "in_point": 0.0,
+      "fit": "contain_blur",
+      "effect": "none",
+      "x_pct": 50.0,
+      "y_pct": 30.0,
+      "scale_pct": 35.0
+    },
+    {
+      "id": "894dd652",
+      "track": "video",
+      "src": "media/b.png",
+      "start": 5.5,
+      "dur": 3.5,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "none",
+      "x_pct": 50.0,
+      "y_pct": 30.0,
+      "scale_pct": 35.0
+    },
+    {
+      "id": "da5572d5",
+      "track": "overlay",
+      "src": "media/comment_box.png",
+      "start": 1.0,
+      "dur": 3.5,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "zoom_in",
+      "x_pct": 50.0,
+      "y_pct": 25.0,
+      "scale_pct": 55.0
+    },
+    {
+      "id": "222876d9",
+      "track": "overlay",
+      "src": "media/arrow_cyan.png",
+      "start": 4.5,
+      "dur": 2.5,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "fade",
+      "x_pct": 75.0,
+      "y_pct": 70.0,
+      "scale_pct": 25.0
+    }
+  ]
+}

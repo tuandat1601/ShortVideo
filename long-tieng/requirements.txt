@@ -1,0 +1,9 @@
+vieneu
+gradio>=4.44
+torch
+torchaudio
+faster-whisper
+pillow
+certifi
+kokoro-onnx
+soundfile

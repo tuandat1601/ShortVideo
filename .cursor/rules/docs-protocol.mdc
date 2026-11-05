@@ -1,0 +1,38 @@
+---
+description: Đọc docs theo Architecture index trước khi code; cập nhật MD feature khi sửa
+alwaysApply: true
+---
+
+# Docs protocol
+
+## Bắt đầu mọi task
+1. Đọc `docs/ARCHITECTURE.md` (index / bản đồ feature).
+2. Từ bảng Feature map / Feature paths, đọc **chỉ** các `docs/features/*.md` khớp task — tối đa khoảng 1–3 file.
+3. Không đọc toàn bộ `docs/` và không đọc dump/legacy trừ khi index chưa cover hoặc user chỉ định.
+4. Không đọc `ghi-chep-chuyen-thoai/trao-doi.md` trừ khi cần nguyên văn đã nói.
+
+## Khi sửa hoặc thêm tính năng
+1. Sửa code / ghi chép theo phạm vi task.
+2. **Bắt buộc** cập nhật MD feature tương ứng trong cùng task.
+3. Feature mới: tạo `docs/features/<ten>.md` (template: Mục đích / Surfaces / Hành vi / Code chính / Changelog), **và** thêm một hàng vào bảng trong `docs/ARCHITECTURE.md` **và** bảng Feature paths bên dưới (giữ rule đồng bộ với index).
+4. Cuối task: thêm 1–5 dòng vào `## Changelog` (`YYYY-MM-DD: …`).
+
+## Feature paths (đọc / ghi)
+
+| Việc / từ khóa | Doc (đọc & ghi) | Code / nguồn |
+|----------------|-----------------|--------------|
+| Bài test / mốc / lát dữ liệu / đóng gói công thức | `docs/features/bai-test.md` | repo `ai-content-generator`: `lib/studio/`, `workers/model/` |
+| Auto News Video / TikTok tvcdevcntt | `docs/features/auto-news-video.md` | Drive mp4, `localhost:3847` |
+| Lồng tiếng / sub / edit đủ đăng YT | `docs/features/long-tieng.md` | `long-tieng/app.py`; YupVox TTS → `voice/` |
+| Kiến thức TTS/ffmpeg/sub/studio | `docs/features/long-tieng-kien-thuc.md` | đọc theo bước |
+| SaaS ngách / Khánh Hùng | `docs/features/saas-ngach.md` | YouTube `56OY0I34toI` |
+| Codex đưa vào app | `docs/features/codex.md` | YouTube `bFNgTOraIwA` |
+
+## Prompt chat mới
+User chỉ cần nêu mục tiêu (+ tên feature nếu biết). Lấy ngữ cảnh từ MD, không yêu cầu dán lịch sử chat cũ.
+Nếu doc và code lệch: ưu tiên code đang chạy, rồi cập nhật MD cho khớp.
+
+## Giới hạn
+Rule này là protocol (+ bảng path). Chi tiết hệ thống nằm ở `docs/ARCHITECTURE.md` và feature MD — không mở rộng file rule bằng dump kiến trúc, chốt nghề, hay nguyên văn chat.
+
+Thiết kế hệ docs: `docs/PRINCIPLES.md`.

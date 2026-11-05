@@ -1,0 +1,31 @@
+# Python
+.venv/
+long-tieng/.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Models & Big Weights (tải riêng hoặc script tự tải)
+long-tieng/models/
+**/models/
+
+# Node / Frontend
+node_modules/
+**/node_modules/
+
+# OS / System
+.DS_Store
+Thumbs.db
+
+# Output & Generated Cache
+long-tieng/out/
+long-tieng/jobs/
+long-tieng/voice/*
+!long-tieng/voice/.gitkeep
+studio/projects/*/build/
+studio/projects/*/out/
+
+# Secrets
+long-tieng/settings.json
+settings.json
+*.env

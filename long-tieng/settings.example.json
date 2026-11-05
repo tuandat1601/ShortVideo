@@ -1,0 +1,8 @@
+{
+  "provider": "Gemini",
+  "gemini_key": "",
+  "openai_key": "",
+  "gemini_model": "gemini-2.5-flash",
+  "openai_model": "gpt-4o-mini",
+  "ollama_model": ""
+}
