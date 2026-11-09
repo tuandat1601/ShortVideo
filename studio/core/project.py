@@ -40,6 +40,21 @@ class VoiceSettings(BaseModel):
     voice: str = "【EN Devlog Trẻ / Độc quyền】blend_young_devlog"
     speed: float = 1.0
     style: str = "Devlog / Chill"   # preset hậu kỳ của dub.READ_STYLES
+    offset: float = 0.0             # mốc bắt đầu giọng trên timeline (giây)
+
+
+class VoiceSegment(BaseModel):
+    """Một đoạn thoại trên timeline: hỗ trợ kịch bản riêng, giọng riêng, thời điểm riêng."""
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
+    text: str = ""
+    voice: str = "【EN Devlog Trẻ / Độc quyền】blend_young_devlog"
+    engine: Literal["kokoro", "vieneu"] = "kokoro"
+    style: str = "Devlog / Chill"
+    speed: float = 1.0
+    start: float = 0.0          # mốc bắt đầu trên timeline (giây)
+    dur: float = 0.0            # thời lượng sau khi đọc (giây)
+    file: str | None = None     # đường dẫn file wav riêng của đoạn này
+    words: list[Word] = Field(default_factory=list)
 
 
 class Clip(BaseModel):
@@ -57,6 +72,11 @@ class Clip(BaseModel):
     x_pct: float = 50.0           # 50 = giữa
     y_pct: float = 30.0           # vị trí dọc
     scale_pct: float = 35.0       # chiều rộng so với chiều rộng màn hình (%)
+    z_order: int = 0              # thứ tự lớp: số càng lớn càng nằm đè lên trên
+    # Căn góc / Reframe / Crop cho video ngang (quay màn hình 16:9 -> dọc 9:16)
+    crop_x: float = 50.0          # 0 = mép trái, 50 = giữa, 100 = mép phải
+    crop_y: float = 50.0          # 0 = đỉnh trên, 50 = giữa, 100 = đáy dưới
+    crop_scale: float = 100.0     # 100 = vừa khung, >100 = zoom cận cảnh vào vùng chọn
 
 
 class Project(BaseModel):
@@ -68,9 +88,14 @@ class Project(BaseModel):
     bg_color: str = "#0B0B12"
     script: str = ""
     voice: VoiceSettings = Field(default_factory=VoiceSettings)
+    voice_segments: list[VoiceSegment] = Field(default_factory=list)
     caption: CaptionStyle = Field(default_factory=CaptionStyle)
     words: list[Word] = Field(default_factory=list)
     voice_file: str | None = None   # tương đối trong thư mục project
+    bgm_file: str | None = None     # tương đối trong thư mục project (vd "media/bgm.mp3")
+    bgm_volume: float = 0.25        # âm lượng nhạc nền (0.0 đến 1.0)
+    bgm_offset: float = 0.0         # mốc bắt đầu BGM trên timeline (giây)
+    export_dir: str | None = None   # thư mục xuất file tùy chọn (vd "~/Downloads", "~/Desktop")
     clips: list[Clip] = Field(default_factory=list)
 
     # ---- đường dẫn ----
@@ -88,7 +113,11 @@ class Project(BaseModel):
 
     @property
     def duration(self) -> float:
-        ends = [w.end for w in self.words] + [c.start + c.dur for c in self.clips]
+        ends = (
+            [w.end for w in self.words]
+            + [s.start + s.dur for s in self.voice_segments]
+            + [c.start + c.dur for c in self.clips]
+        )
         return max(ends) if ends else 0.0
 
     # ---- lưu / mở ----

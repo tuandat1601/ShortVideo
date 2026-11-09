@@ -6,6 +6,7 @@ interface Props {
   meta: Meta | null
   selectedClip: string | null
   update: (fn: (p: Project) => Project, record?: boolean) => void
+  onOpenCrop?: (clipId: string) => void
 }
 
 const Field = ({ label, children }: { label: string; children: ReactNode }) => (
@@ -16,7 +17,7 @@ const Field = ({ label, children }: { label: string; children: ReactNode }) => (
 )
 const input = 'w-full rounded-md border border-white/10 bg-zinc-800 px-2 py-1.5 text-sm outline-none focus:border-violet-500'
 
-export default function Inspector({ project: p, meta, selectedClip, update }: Props) {
+export default function Inspector({ project: p, meta, selectedClip, update, onOpenCrop }: Props) {
   const c = p.clips.find(x => x.id === selectedClip)
   const cap = p.caption
   const setCap = <K extends keyof Project['caption']>(k: K, v: Project['caption'][K]) =>
@@ -84,7 +85,7 @@ export default function Inspector({ project: p, meta, selectedClip, update }: Pr
             </select>
           </Field>
 
-          {/* Nếu là Icon / Lớp phủ -> Hiện chỉnh vị trí & kích thước */}
+          {/* Nếu là Icon / Lớp phủ -> Hiện chỉnh vị trí & kích thước & thứ tự lớp đè */}
           {c.track === 'overlay' && (
             <div className="my-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
               <span className="mb-2 block text-xs font-semibold text-amber-300">Vị trí & Kích thước Icon</span>
@@ -101,6 +102,43 @@ export default function Inspector({ project: p, meta, selectedClip, update }: Pr
                 />
                 🎯 Làm tối mờ nền phía sau (Spotlight Focus)
               </label>
+
+              {/* Thứ tự lớp đè (Z-Index) */}
+              <div className="mb-3 rounded-md bg-zinc-900/80 p-2 border border-white/5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-semibold text-zinc-300">Thứ tự lớp đè:</span>
+                  <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">
+                    Lớp #{c.z_order ?? 0}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => update(prj => {
+                      const target = prj.clips.find(x => x.id === c.id)!
+                      target.z_order = (target.z_order ?? 0) + 1
+                      return prj
+                    })}
+                    className="flex items-center justify-center gap-1 rounded bg-zinc-800 py-1 text-xs text-zinc-200 hover:bg-amber-600 hover:text-white transition"
+                    title="Đưa icon này đè lên trên các icon khác"
+                  >
+                    ⬆️ Đè lên trên
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update(prj => {
+                      const target = prj.clips.find(x => x.id === c.id)!
+                      target.z_order = Math.max(0, (target.z_order ?? 0) - 1)
+                      return prj
+                    })}
+                    className="flex items-center justify-center gap-1 rounded bg-zinc-800 py-1 text-xs text-zinc-200 hover:bg-zinc-700 transition"
+                    title="Hạ icon này nằm dưới các icon khác"
+                  >
+                    ⬇️ Nằm bên dưới
+                  </button>
+                </div>
+              </div>
+
               <Field label={`Kích thước icon (${c.scale_pct || 35}%)`}>
                 <input
                   type="range" min={15} max={90} className="w-full accent-amber-500"
@@ -156,10 +194,86 @@ export default function Inspector({ project: p, meta, selectedClip, update }: Pr
             <Field label="Khung hình (Fit)">
               <select className={input} value={c.fit}
                 onChange={e => update(prj => { prj.clips.find(x => x.id === c.id)!.fit = e.target.value as 'cover'; return prj })}>
-                <option value="cover">Phủ kín (cắt cạnh)</option>
+                <option value="cover">Phủ kín (Cắt góc 9:16)</option>
                 <option value="contain_blur">Giữ nguyên + nền mờ (Contain blur)</option>
               </select>
             </Field>
+          )}
+
+          {/* Căn góc quay màn hình / Reframe 9:16 */}
+          {c.track !== 'overlay' && c.fit === 'cover' && (
+            <div className="mb-4 rounded-xl border border-violet-500/30 bg-violet-950/20 p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-violet-300 flex items-center gap-1.5">
+                  <span>📐</span> Căn góc 9:16 (Quay màn hình)
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono">
+                  {c.crop_x ?? 50}% X
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOpenCrop?.(c.id)}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 py-2 text-xs font-bold text-white hover:from-violet-500 hover:to-fuchsia-500 shadow-md shadow-violet-950/40 transition active:scale-95"
+              >
+                <span>🔍 Mở bảng Cắt góc trực quan</span>
+              </button>
+
+              <div className="grid grid-cols-3 gap-1 pt-1 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => update(prj => {
+                    const target = prj.clips.find(x => x.id === c.id)!
+                    target.crop_x = 0; target.crop_y = 50
+                    return prj
+                  })}
+                  className={`rounded py-1 font-medium transition ${(c.crop_x ?? 50) <= 5 ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}
+                >
+                  ⬅️ Trái (Code)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update(prj => {
+                    const target = prj.clips.find(x => x.id === c.id)!
+                    target.crop_x = 50; target.crop_y = 50
+                    return prj
+                  })}
+                  className={`rounded py-1 font-medium transition ${(c.crop_x ?? 50) > 40 && (c.crop_x ?? 50) < 60 ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}
+                >
+                  ⏺️ Ở Giữa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => update(prj => {
+                    const target = prj.clips.find(x => x.id === c.id)!
+                    target.crop_x = 100; target.crop_y = 50
+                    return prj
+                  })}
+                  className={`rounded py-1 font-medium transition ${(c.crop_x ?? 50) >= 95 ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}
+                >
+                  ➡️ Phải (Web)
+                </button>
+              </div>
+
+              <div className="space-y-1 pt-1">
+                <div className="flex justify-between text-[10px] text-zinc-400">
+                  <span>Trục ngang (X): {c.crop_x ?? 50}%</span>
+                  <span>Zoom: {c.crop_scale ?? 100}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={c.crop_x ?? 50}
+                  onChange={e => update(prj => {
+                    prj.clips.find(x => x.id === c.id)!.crop_x = +e.target.value
+                    return prj
+                  })}
+                  className="w-full accent-violet-500"
+                />
+              </div>
+            </div>
           )}
 
           <button className="w-full rounded-md bg-rose-600/80 py-1.5 text-xs font-medium hover:bg-rose-600"

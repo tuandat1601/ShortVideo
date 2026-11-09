@@ -24,6 +24,8 @@ long-tieng/voice/*
 !long-tieng/voice/.gitkeep
 studio/projects/*/build/
 studio/projects/*/out/
+studio/projects/_preview/
+*.mov
 
 # Secrets
 long-tieng/settings.json

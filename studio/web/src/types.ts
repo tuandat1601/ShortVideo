@@ -4,7 +4,19 @@ export interface CaptionStyle {
   stroke_width: number; y_pct: number; max_words: number; uppercase: boolean;
   effect: 'none' | 'pop_in';
 }
-export interface VoiceSettings { engine: string; voice: string; speed: number; style: string }
+export interface VoiceSettings { engine: string; voice: string; speed: number; style: string; offset?: number }
+export interface VoiceSegment {
+  id: string;
+  text: string;
+  voice: string;
+  engine: string;
+  style: string;
+  speed: number;
+  start: number;
+  dur: number;
+  file?: string | null;
+  words: Word[];
+}
 export interface Clip {
   id: string; track: 'video' | 'overlay'; src: string; start: number; dur: number; in_point: number;
   fit: 'cover' | 'contain_blur' | 'contain';
@@ -13,19 +25,45 @@ export interface Clip {
   x_pct: number;
   y_pct: number;
   scale_pct: number;
+  z_order?: number;
+  crop_x?: number;
+  crop_y?: number;
+  crop_scale?: number;
 }
 export interface Project {
   id: string; name: string; width: number; height: number; fps: number; bg_color: string;
-  script: string; voice: VoiceSettings; caption: CaptionStyle; words: Word[];
-  voice_file: string | null; clips: Clip[];
+  script: string; voice: VoiceSettings;
+  voice_segments?: VoiceSegment[];
+  caption: CaptionStyle; words: Word[];
+  voice_file: string | null;
+  bgm_file?: string | null;
+  bgm_volume?: number;
+  bgm_offset?: number;
+  export_dir?: string | null;
+  clips: Clip[];
 }
-export interface Meta { voices: Record<string, string[]>; styles: string[]; fonts: string[] }
+export interface ExportPreset {
+  id: string;
+  label: string;
+  path: string;
+}
+export interface Meta {
+  voices: Record<string, string[]>;
+  categories?: Record<string, string[]>;
+  styles: string[];
+  fonts: string[];
+  export_presets?: ExportPreset[];
+}
 
 export const isImage = (src: string) => /\.(png|jpe?g|webp|gif)$/i.test(src)
 export const isVideo = (src: string) => /\.(mp4|mov|webm|mkv|m4v)$/i.test(src)
 
 export function duration(p: Project): number {
-  const ends = [...p.words.map(w => w.end), ...p.clips.map(c => c.start + c.dur)]
+  const ends = [
+    ...p.words.map(w => w.end),
+    ...(p.voice_segments ?? []).map(s => s.start + s.dur),
+    ...p.clips.map(c => c.start + c.dur),
+  ]
   return ends.length ? Math.max(...ends) + 0.3 : 0
 }
 
