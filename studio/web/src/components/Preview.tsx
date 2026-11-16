@@ -32,23 +32,45 @@ export default function Preview({ project: p, time, playing, onSeekAudio, voiceV
     }
   }, [p.bgm_volume])
 
-  // Đồng bộ phát BGM (chỉ seek khi play/pause, không seek liên tục khi đang phát)
+  // Đồng bộ phát BGM mượt mà với Timeline (tự động bật khi chạy qua mốc offset và đồng bộ khi tua)
   useEffect(() => {
     const bgm = bgmAudio.current
-    if (!bgm) return
+    if (!bgm || !p.bgm_file) return
     const bgmOffset = p.bgm_offset ?? 0
+
     if (playing) {
       if (time >= bgmOffset) {
-        bgm.currentTime = Math.max(0, time - bgmOffset)
-        bgm.play().catch(() => {})
+        const bgmDuration = bgm.duration > 0 ? bgm.duration : 1000000
+        const want = (time - bgmOffset) % bgmDuration
+        const diff = Math.abs(bgm.currentTime - want)
+        // Chỉ seek lại nếu bị lệch đáng kể (> 0.25s) để giữ âm thanh mượt mà liên tục
+        if (diff > 0.25) {
+          bgm.currentTime = want
+        }
+        if (bgm.paused) {
+          bgm.play().catch(() => {})
+        }
       } else {
-        bgm.pause()
+        if (!bgm.paused) {
+          bgm.pause()
+        }
         bgm.currentTime = 0
       }
     } else {
-      bgm.pause()
+      if (!bgm.paused) {
+        bgm.pause()
+      }
+      if (time >= bgmOffset) {
+        const bgmDuration = bgm.duration > 0 ? bgm.duration : 1000000
+        const want = (time - bgmOffset) % bgmDuration
+        if (Math.abs(bgm.currentTime - want) > 0.05) {
+          bgm.currentTime = want
+        }
+      } else {
+        bgm.currentTime = 0
+      }
     }
-  }, [playing])
+  }, [time, playing, p.bgm_file, p.bgm_offset])
 
   // Đồng bộ video clip với thời gian timeline (tua kéo bám sát chuột khi !playing)
   useEffect(() => {
@@ -57,7 +79,14 @@ export default function Preview({ project: p, time, playing, onSeekAudio, voiceV
       if (!v) continue
       const active = time >= c.start && time < c.start + c.dur
       if (active) {
-        const want = c.in_point + (time - c.start)
+        const speed = Math.max(0.1, c.speed ?? 1.0)
+        try {
+          if (Math.abs(v.playbackRate - speed) > 0.05) {
+            v.playbackRate = Math.min(16, speed)
+          }
+        } catch { /* ignore playbackRate limits */ }
+
+        const want = c.in_point + (time - c.start) * speed
         const diff = Math.abs(v.currentTime - want)
         if ((!playing && diff > 0.02) || (playing && diff > 0.25)) {
           v.currentTime = want

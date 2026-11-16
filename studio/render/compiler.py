@@ -61,10 +61,12 @@ def build_command(
         src = proj.dir / clip.src
         if not src.exists():
             raise FileNotFoundError(f"Thiếu media: {clip.src}")
+        speed = max(0.1, float(getattr(clip, "speed", 1.0) or 1.0))
         if src.suffix.lower() in IMAGE_EXTS:
             cmd += ["-loop", "1", "-t", f"{clip.dur:.3f}", "-i", str(src)]
         else:
-            cmd += ["-ss", f"{clip.in_point:.3f}", "-t", f"{clip.dur:.3f}", "-i", str(src)]
+            src_dur = clip.dur * speed
+            cmd += ["-ss", f"{clip.in_point:.3f}", "-t", f"{src_dur:.3f}", "-i", str(src)]
         i = n_in
         n_in += 1
 
@@ -109,7 +111,10 @@ def build_command(
         elif clip.effect == "dim_blur":
             fx.append("boxblur=20:4,eq=brightness=-0.32:contrast=1.05")
 
-        fx.append(f"setpts=PTS-STARTPTS+{clip.start:.3f}/TB")
+        if src.suffix.lower() not in IMAGE_EXTS and abs(speed - 1.0) > 0.01:
+            fx.append(f"setpts=(PTS-STARTPTS)/{speed:.4f}+{clip.start:.3f}/TB")
+        else:
+            fx.append(f"setpts=PTS-STARTPTS+{clip.start:.3f}/TB")
         filters.append(f"[{v_in}]{','.join(fx)}[v{i}]")
 
         out_lbl = f"o{i}"
@@ -124,10 +129,12 @@ def build_command(
         src = proj.dir / clip.src
         if not src.exists():
             continue
+        speed_ov = max(0.1, float(getattr(clip, "speed", 1.0) or 1.0))
         if src.suffix.lower() in IMAGE_EXTS:
             cmd += ["-loop", "1", "-t", f"{clip.dur:.3f}", "-i", str(src)]
         else:
-            cmd += ["-ss", f"{clip.in_point:.3f}", "-t", f"{clip.dur:.3f}", "-i", str(src)]
+            src_dur = clip.dur * speed_ov
+            cmd += ["-ss", f"{clip.in_point:.3f}", "-t", f"{src_dur:.3f}", "-i", str(src)]
         i = n_in
         n_in += 1
 
@@ -141,7 +148,10 @@ def build_command(
             fx_ov.append("fade=t=in:st=0:d=0.15:color=white")
         elif clip.effect == "spotlight":
             fx_ov.append("fade=t=in:st=0:d=0.15")
-        fx_ov.append(f"setpts=PTS-STARTPTS+{clip.start:.3f}/TB")
+        if src.suffix.lower() not in IMAGE_EXTS and abs(speed_ov - 1.0) > 0.01:
+            fx_ov.append(f"setpts=(PTS-STARTPTS)/{speed_ov:.4f}+{clip.start:.3f}/TB")
+        else:
+            fx_ov.append(f"setpts=PTS-STARTPTS+{clip.start:.3f}/TB")
 
         # Spotlight backdrop: làm tối nền xung quanh để nổi bật overlay / comment
         if getattr(clip, "dim_bg", False) or clip.effect == "spotlight":
@@ -204,7 +214,7 @@ def build_command(
         bgm_lbl = "bgm_a"
 
     if has_voice and has_bgm:
-        filters.append(f"[{voice_lbl}][{bgm_lbl}]amix=inputs=2:duration=first:dropout_transition=2[aout]")
+        filters.append(f"[{voice_lbl}][{bgm_lbl}]amix=inputs=2:duration=longest:normalize=0[aout]")
         out_a = "[aout]"
     elif has_voice:
         if voice_offset > 0:
@@ -236,7 +246,8 @@ def render_project(
     quality: str = "1080p",
     eco_mode: bool = True,
 ) -> Path:
-    default_out = proj.dir / "out" / f"{proj.name or proj.id}_{quality}.mp4".replace(" ", "_")
+    default_name = out.name if out else f"{proj.name or proj.id}_{quality}.mp4".replace(" ", "_")
+    default_out = proj.dir / "out" / default_name
     target_out = out or default_out
     target_out.parent.mkdir(parents=True, exist_ok=True)
     concat = render_caption_frames(proj) if proj.words else None

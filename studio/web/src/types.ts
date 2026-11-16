@@ -29,6 +29,7 @@ export interface Clip {
   crop_x?: number;
   crop_y?: number;
   crop_scale?: number;
+  speed?: number;
 }
 export interface Project {
   id: string; name: string; width: number; height: number; fps: number; bg_color: string;

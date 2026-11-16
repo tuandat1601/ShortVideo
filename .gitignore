@@ -25,7 +25,9 @@ long-tieng/voice/*
 studio/projects/*/build/
 studio/projects/*/out/
 studio/projects/_preview/
-*.mov
+studio/projects/*/media/*.mp3
+**/*.mov
+**/*.mp4
 
 # Secrets
 long-tieng/settings.json

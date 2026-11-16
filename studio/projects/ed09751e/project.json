@@ -1,0 +1,253 @@
+{
+  "id": "ed09751e",
+  "name": "cartonchair",
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "bg_color": "#0B0B12",
+  "script": "Adding a little cardboard chair to the recycled car for the hamster.",
+  "voice": {
+    "engine": "kokoro",
+    "voice": "【EN Devlog Trẻ / Độc quyền】blend_young_devlog",
+    "speed": 0.85,
+    "style": "Devlog / Chill",
+    "offset": 0.0
+  },
+  "voice_segments": [
+    {
+      "id": "ef98c64f",
+      "text": "Adding a little cardboard chair to the recycled car for the hamster.",
+      "voice": "【EN Devlog Trẻ / Độc quyền】blend_young_devlog",
+      "engine": "kokoro",
+      "style": "Devlog / Chill",
+      "speed": 0.85,
+      "start": 0.0,
+      "dur": 3.803,
+      "file": "media/v_ef98c64f.wav",
+      "words": [
+        {
+          "text": "Adding",
+          "start": 0.0,
+          "end": 0.28,
+          "emph": false
+        },
+        {
+          "text": "a",
+          "start": 0.28,
+          "end": 0.42,
+          "emph": false
+        },
+        {
+          "text": "little",
+          "start": 0.42,
+          "end": 0.56,
+          "emph": false
+        },
+        {
+          "text": "cardboard",
+          "start": 0.56,
+          "end": 1.0,
+          "emph": true
+        },
+        {
+          "text": "chair",
+          "start": 1.0,
+          "end": 1.52,
+          "emph": false
+        },
+        {
+          "text": "to",
+          "start": 1.52,
+          "end": 1.76,
+          "emph": false
+        },
+        {
+          "text": "the",
+          "start": 1.76,
+          "end": 1.88,
+          "emph": false
+        },
+        {
+          "text": "recycled",
+          "start": 1.88,
+          "end": 2.32,
+          "emph": true
+        },
+        {
+          "text": "car",
+          "start": 2.32,
+          "end": 2.72,
+          "emph": false
+        },
+        {
+          "text": "for",
+          "start": 2.72,
+          "end": 2.94,
+          "emph": false
+        },
+        {
+          "text": "the",
+          "start": 2.94,
+          "end": 3.08,
+          "emph": false
+        },
+        {
+          "text": "hamster.",
+          "start": 3.08,
+          "end": 3.56,
+          "emph": true
+        }
+      ]
+    }
+  ],
+  "caption": {
+    "font": "Impact",
+    "size": 110,
+    "color": "#FFFFFF",
+    "emph_color": "#2EE6FF",
+    "stroke_color": "#000000",
+    "stroke_width": 10,
+    "y_pct": 22.0,
+    "max_words": 2,
+    "uppercase": false,
+    "effect": "pop_in"
+  },
+  "words": [
+    {
+      "text": "Adding",
+      "start": 0.0,
+      "end": 0.28,
+      "emph": false
+    },
+    {
+      "text": "a",
+      "start": 0.28,
+      "end": 0.42,
+      "emph": false
+    },
+    {
+      "text": "little",
+      "start": 0.42,
+      "end": 0.56,
+      "emph": false
+    },
+    {
+      "text": "cardboard",
+      "start": 0.56,
+      "end": 1.0,
+      "emph": true
+    },
+    {
+      "text": "chair",
+      "start": 1.0,
+      "end": 1.52,
+      "emph": false
+    },
+    {
+      "text": "to",
+      "start": 1.52,
+      "end": 1.76,
+      "emph": false
+    },
+    {
+      "text": "the",
+      "start": 1.76,
+      "end": 1.88,
+      "emph": false
+    },
+    {
+      "text": "recycled",
+      "start": 1.88,
+      "end": 2.32,
+      "emph": true
+    },
+    {
+      "text": "car",
+      "start": 2.32,
+      "end": 2.72,
+      "emph": false
+    },
+    {
+      "text": "for",
+      "start": 2.72,
+      "end": 2.94,
+      "emph": false
+    },
+    {
+      "text": "the",
+      "start": 2.94,
+      "end": 3.08,
+      "emph": false
+    },
+    {
+      "text": "hamster.",
+      "start": 3.08,
+      "end": 3.56,
+      "emph": true
+    }
+  ],
+  "voice_file": "media/voice.wav",
+  "bgm_file": "media/bgm_1794857148.mp3",
+  "bgm_volume": 0.25,
+  "bgm_offset": 5.354,
+  "export_dir": "/Users/tuandat/Downloads",
+  "clips": [
+    {
+      "id": "c1_video1",
+      "track": "video",
+      "src": "media/Screen Recording 2026-11-17 at 01.11.35.mov",
+      "start": 0.0,
+      "dur": 15.36,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "none",
+      "dim_bg": false,
+      "x_pct": 50.0,
+      "y_pct": 50.0,
+      "scale_pct": 100.0,
+      "z_order": 0,
+      "crop_x": 38.0,
+      "crop_y": 50.0,
+      "crop_scale": 100.0,
+      "speed": 10.0
+    },
+    {
+      "id": "c2_video2",
+      "track": "video",
+      "src": "media/Screen Recording 2026-11-17 at 01.20.11.mov",
+      "start": 15.997,
+      "dur": 19.89,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "none",
+      "dim_bg": false,
+      "x_pct": 50.0,
+      "y_pct": 50.0,
+      "scale_pct": 100.0,
+      "z_order": 0,
+      "crop_x": 39.0,
+      "crop_y": 50.0,
+      "crop_scale": 100.0,
+      "speed": 2.0
+    },
+    {
+      "id": "c3_video3",
+      "track": "video",
+      "src": "media/Screen Recording 2026-11-17 at 01.23.10.mov",
+      "start": 36.56645833333333,
+      "dur": 17.872552083333332,
+      "in_point": 0.0,
+      "fit": "cover",
+      "effect": "none",
+      "dim_bg": false,
+      "x_pct": 50.0,
+      "y_pct": 50.0,
+      "scale_pct": 100.0,
+      "z_order": 0,
+      "crop_x": 50.0,
+      "crop_y": 50.0,
+      "crop_scale": 100.0,
+      "speed": 1.5
+    }
+  ]
+}

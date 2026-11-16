@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Meta, Project } from '../types'
+import { isVideo, type Meta, type Project } from '../types'
 
 interface Props {
   project: Project
@@ -189,6 +189,94 @@ export default function Inspector({ project: p, meta, selectedClip, update, onOp
             <input type="number" step="0.1" className={input} value={c.in_point}
               onChange={e => update(prj => { prj.clips.find(x => x.id === c.id)!.in_point = Math.max(0, +e.target.value); return prj })} />
           </Field>
+
+          {/* Tăng tốc độ phát (Speed / Timelapse) cho video */}
+          {isVideo(c.src) && (
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/20 p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <span>⚡</span> Tốc độ phát (Speed / Timelapse)
+                </span>
+                <span className="text-xs font-mono font-bold text-amber-400">
+                  {(c.speed ?? 1.0).toFixed(1)}x
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0.2"
+                  max="50"
+                  className={input}
+                  value={c.speed ?? 1.0}
+                  onChange={e => {
+                    const newSpeed = Math.max(0.1, +e.target.value)
+                    update(prj => {
+                      const target = prj.clips.find(x => x.id === c.id)!
+                      const oldSpeed = target.speed ?? 1.0
+                      target.speed = newSpeed
+                      if (oldSpeed > 0 && newSpeed > 0) {
+                        target.dur = Math.max(0.2, Number((target.dur * (oldSpeed / newSpeed)).toFixed(2)))
+                      }
+                      return prj
+                    })
+                  }}
+                />
+                <span className="text-xs text-zinc-400">lần (x)</span>
+              </div>
+
+              <div className="flex flex-wrap gap-1 text-[10px]">
+                {[1, 1.5, 2, 3, 5, 10, 15, 20].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      update(prj => {
+                        const target = prj.clips.find(x => x.id === c.id)!
+                        const oldSpeed = target.speed ?? 1.0
+                        target.speed = s
+                        if (oldSpeed > 0 && s > 0) {
+                          target.dur = Math.max(0.2, Number((target.dur * (oldSpeed / s)).toFixed(2)))
+                        }
+                        return prj
+                      })
+                    }}
+                    className={`rounded px-2 py-1 font-medium transition ${
+                      Math.abs((c.speed ?? 1.0) - s) < 0.05
+                        ? 'bg-amber-500 text-black font-bold'
+                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {s}x
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  update(prj => {
+                    const curr = prj.clips.find(x => x.id === c.id)!
+                    const track = curr.track || 'video'
+                    const afterClips = prj.clips
+                      .filter(x => (x.track || 'video') === track && x.start >= curr.start && x.id !== curr.id)
+                      .sort((a, b) => a.start - b.start)
+                    let nextStart = curr.start + curr.dur
+                    for (const ac of afterClips) {
+                      ac.start = Number(nextStart.toFixed(2))
+                      nextStart += ac.dur
+                    }
+                    return prj
+                  })
+                }}
+                className="w-full rounded bg-zinc-800/80 hover:bg-zinc-700 py-1.5 text-[11px] text-amber-200 transition text-center"
+                title="Dồn các clip phía sau tự động hít sát vào đuôi clip này để không bị khoảng trống"
+              >
+                🧲 Dồn các clip phía sau liền kề
+              </button>
+            </div>
+          )}
 
           {c.track !== 'overlay' && (
             <Field label="Khung hình (Fit)">

@@ -22,6 +22,7 @@ export default function App() {
   const [voiceVersion, setVoiceVersion] = useState(0)
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFilename, setExportFilename] = useState<string>('')
   const [selectedExportDir, setSelectedExportDir] = useState<string>('project')
   const [customExportDir, setCustomExportDir] = useState<string>('')
   const [exportQuality, setExportQuality] = useState<'480p' | '720p' | '1080p'>('720p')
@@ -137,10 +138,17 @@ export default function App() {
     setToasts(prev => prev.filter(t => t.id !== id))
   }
 
+  const openExportModal = () => {
+    if (!exportFilename && project) {
+      setExportFilename(`${project.name || project.id}_${exportQuality}`)
+    }
+    setShowExportModal(true)
+  }
+
   const run = async (kind: 'voice' | 'render' | 'broll', segmentId?: string) => {
     if (!project) return
     if (kind === 'render') {
-      setShowExportModal(true)
+      openExportModal()
       return
     }
     const busyKey = segmentId ? `voice_${segmentId}` : kind
@@ -201,7 +209,7 @@ export default function App() {
     try {
       update(p => { p.export_dir = targetDir; return p }, false)
       await api.save({ ...project, export_dir: targetDir })
-      const res = await api.render(project.id, targetDir, exportQuality, ecoMode)
+      const res = await api.render(project.id, targetDir, exportQuality, ecoMode, exportFilename.trim() || undefined)
       setLastRender(res)
       const elapsed = (performance.now() - t0) / 1000
 
@@ -259,7 +267,7 @@ export default function App() {
         <span className="text-xs text-zinc-500">{dirty ? 'Đang lưu…' : 'Đã lưu'}</span>
         <div className="ml-auto flex items-center gap-2">
           <button
-            onClick={() => setShowExportModal(true)}
+            onClick={openExportModal}
             disabled={!project || !!busy || !total}
             className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-fuchsia-600 to-pink-600 px-4 py-1.5 text-sm font-bold text-white hover:from-fuchsia-500 hover:to-pink-500 disabled:opacity-40 shadow-lg shadow-fuchsia-950/50 transition ring-1 ring-white/20 active:scale-95"
             title={!total ? 'Cần có giọng nói hoặc clip trước khi xuất' : 'Mở bảng xuất video MP4'}
@@ -396,6 +404,26 @@ export default function App() {
                     />
                   )}
                 </label>
+              </div>
+            </div>
+
+            {/* Đặt tên video xuất ra */}
+            <div className="space-y-1.5 border-t border-white/10 pt-3">
+              <div className="flex items-center justify-between">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                  📝 Tên video xuất ra:
+                </span>
+                <span className="text-[10px] text-zinc-500 font-mono">Định dạng .mp4</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="flex-1 rounded-md border border-white/10 bg-zinc-950 px-3 py-1.5 text-xs text-white placeholder-zinc-500 outline-none focus:border-fuchsia-500 font-medium"
+                  placeholder={`vd: ${project?.name || 'video'}_${exportQuality}`}
+                  value={exportFilename}
+                  onChange={e => setExportFilename(e.target.value)}
+                />
+                <span className="text-xs text-zinc-400 font-mono">.mp4</span>
               </div>
             </div>
 

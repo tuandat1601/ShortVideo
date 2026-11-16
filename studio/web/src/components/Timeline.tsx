@@ -17,14 +17,14 @@ interface Props {
 export default function Timeline({ project: p, time, selected, onSelect, onSeek, update }: Props) {
   const [pxPerSec, setPxPerSec] = useState<number>(() => {
     const saved = localStorage.getItem('studio_timeline_zoom')
-    return saved ? Math.max(50, Math.min(300, Number(saved))) : 110
+    return saved ? Math.max(3, Math.min(300, Number(saved))) : 110
   })
   const [wordMode, setWordMode] = useState<'word' | 'phrase'>(() => {
     return (localStorage.getItem('studio_word_mode') as 'word' | 'phrase') || 'word'
   })
 
   const changeZoom = (newVal: number) => {
-    const clamped = Math.min(300, Math.max(50, Math.round(newVal)))
+    const clamped = Math.min(300, Math.max(3, Math.round(newVal)))
     setPxPerSec(clamped)
     localStorage.setItem('studio_timeline_zoom', String(clamped))
   }
@@ -60,7 +60,7 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
     if (!wrap.current || total <= 0) return
     const avail = wrap.current.clientWidth - LABEL_W - 40
     if (avail > 80) {
-      const target = Math.max(25, Math.min(250, Math.floor(avail / total)))
+      const target = Math.max(3, Math.min(250, Math.floor(avail / total)))
       changeZoom(target)
     }
   }
@@ -201,8 +201,27 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
     return groupWords(p.words, p.caption.max_words || 3)
   }, [p.words, p.caption.max_words])
 
-  const step = pxPerSec >= 160 ? 0.5 : 1
-  const ticks = Array.from({ length: Math.ceil(total / step) + 1 }, (_, i) => Number((i * step).toFixed(1)))
+  const step = useMemo(() => {
+    if (pxPerSec >= 160) return 0.5
+    if (pxPerSec >= 70) return 1
+    if (pxPerSec >= 35) return 2
+    if (pxPerSec >= 18) return 5
+    if (pxPerSec >= 8) return 10
+    if (pxPerSec >= 4) return 30
+    return 60
+  }, [pxPerSec])
+  const ticks = useMemo(() => {
+    return Array.from({ length: Math.ceil(total / step) + 1 }, (_, i) => Number((i * step).toFixed(1)))
+  }, [total, step])
+
+  const formatTick = (t: number) => {
+    if (t >= 60) {
+      const m = Math.floor(t / 60)
+      const s = Math.round(t % 60)
+      return s > 0 ? `${m}m${s}s` : `${m}m`
+    }
+    return Number.isInteger(t) ? `${t}s` : `${t}`
+  }
   const voiceEnd = p.words.length ? p.words[p.words.length - 1].end : (p.voice.offset ?? 0)
 
   const segments = (p.voice_segments && p.voice_segments.length > 0)
@@ -240,7 +259,8 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
         if (e.altKey || e.ctrlKey || e.metaKey) {
           // Ngăn trình duyệt kích hoạt Page Zoom (phóng to trang web)
           e.preventDefault()
-          changeZoom(pxPerSec - Math.sign(e.deltaY) * 20)
+          const factor = e.deltaY > 0 ? 0.8 : 1.25
+          changeZoom(pxPerSec * factor)
         } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && wrap.current) {
           // Lăn chuột dọc -> tự động cuộn ngang timeline
           wrap.current.scrollLeft += e.deltaY
@@ -263,14 +283,22 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
             </button>
             <div className="flex items-center gap-0.5">
               <button
-                onClick={e => { e.stopPropagation(); changeZoom(pxPerSec - 20) }}
+                onClick={e => {
+                  e.stopPropagation()
+                  const step = pxPerSec <= 15 ? 2 : pxPerSec <= 40 ? 5 : 20
+                  changeZoom(pxPerSec - step)
+                }}
                 className="rounded p-0.5 text-[10px] font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white"
                 title="Thu nhỏ timeline"
               >
                 －
               </button>
               <button
-                onClick={e => { e.stopPropagation(); changeZoom(pxPerSec + 20) }}
+                onClick={e => {
+                  e.stopPropagation()
+                  const step = pxPerSec <= 15 ? 2 : pxPerSec <= 40 ? 5 : 20
+                  changeZoom(pxPerSec + step)
+                }}
                 className="rounded p-0.5 text-[10px] font-bold text-zinc-400 hover:bg-zinc-800 hover:text-white"
                 title="Phóng to timeline (xem rõ từng từ)"
               >
@@ -280,8 +308,8 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
           </div>
           <div className="relative pointer-events-none" style={{ width }}>
             {ticks.map(t => (
-              <div key={t} className="absolute top-0 h-full border-l border-white/10 pl-1 text-[10px] text-zinc-500" style={{ left: t * pxPerSec }}>
-                {Number.isInteger(t) ? `${t}s` : `${t}`}
+              <div key={t} className="absolute top-0 h-full border-l border-white/10 pl-1 text-[10px] text-zinc-500 whitespace-nowrap" style={{ left: t * pxPerSec }}>
+                {formatTick(t)}
               </div>
             ))}
           </div>
@@ -300,7 +328,15 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
               style={{ left: c.start * pxPerSec, width: c.dur * pxPerSec }}
               title={c.src}
             >
-              <span className="truncate">{c.effect !== 'none' ? `✨ ${c.src.replace('media/', '')}` : c.src.replace('media/', '')}</span>
+              <span className="truncate flex items-center gap-1">
+                {c.effect !== 'none' && <span>✨</span>}
+                {c.speed && Math.abs(c.speed - 1) > 0.05 && (
+                  <span className="rounded bg-amber-400 px-1 text-[9px] font-bold text-black shrink-0">
+                    ⚡{c.speed}x
+                  </span>
+                )}
+                <span className="truncate">{c.src.replace('media/', '')}</span>
+              </span>
               <div onPointerDown={e => dragClip(e, c.id, 'resize')} className="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-white/30" />
             </div>
           ))}

@@ -77,6 +77,7 @@ class Clip(BaseModel):
     crop_x: float = 50.0          # 0 = mép trái, 50 = giữa, 100 = mép phải
     crop_y: float = 50.0          # 0 = đỉnh trên, 50 = giữa, 100 = đáy dưới
     crop_scale: float = 100.0     # 100 = vừa khung, >100 = zoom cận cảnh vào vùng chọn
+    speed: float = 1.0            # Tốc độ phát (1.0 = chuẩn, 2.0 = 2x, 10.0 = 10x tua nhanh timelapse)
 
 
 class Project(BaseModel):

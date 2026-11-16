@@ -25,8 +25,8 @@ export const api = {
     method: 'POST',
   }).then(r => j<Project>(r)),
   autoBroll: (id: string) => fetch(`/api/projects/${id}/auto-broll`, { method: 'POST' }).then(r => j<Project>(r)),
-  render: (id: string, export_dir?: string | null, quality = '1080p', eco_mode = true) => fetch(`/api/projects/${id}/render`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ export_dir, quality, eco_mode }),
+  render: (id: string, export_dir?: string | null, quality = '1080p', eco_mode = true, filename?: string) => fetch(`/api/projects/${id}/render`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ export_dir, quality, eco_mode, filename }),
   }).then(r => j<{ url: string; saved_path: string; filename: string }>(r)),
   cropSource: (pid: string, src: string, crop_x: number, crop_y: number, crop_scale: number, name?: string) => fetch(`/api/projects/${pid}/crop-source`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ src, crop_x, crop_y, crop_scale, name }),
@@ -39,6 +39,7 @@ export const api = {
     return fetch(`/api/projects/${id}/media`, { method: 'POST', body: fd }).then(r => j<{ src: string }>(r))
   },
   media: (id: string) => fetch(`/api/media/${id}`).then(r => j<string[]>(r)),
+  mediaInfo: (pid: string, src: string) => fetch(`/api/media-info/${pid}?src=${encodeURIComponent(src)}`).then(r => j<{ duration: number }>(r)),
   stickers: () => fetch('/api/stickers').then(r => j<string[]>(r)),
   addSticker: (pid: string, name: string) => fetch(`/api/projects/${pid}/add-sticker/${name}`, { method: 'POST' }).then(r => j<{ src: string }>(r)),
   meta: () => fetch('/api/meta').then(r => j<Meta>(r)),

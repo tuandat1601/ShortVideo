@@ -97,18 +97,40 @@ export default function Sidebar({
     }
   }
 
-  const addClip = (src: string, track: 'video' | 'overlay' = 'video') =>
+  const addClip = async (src: string, track: 'video' | 'overlay' = 'video') => {
+    let dur = track === 'overlay' ? 2.0 : 2.5
+    if (isVideo(src)) {
+      try {
+        const info = await api.mediaInfo(p.id, src)
+        if (info.duration && info.duration > 0.05) {
+          dur = Number(info.duration.toFixed(2))
+        }
+      } catch {
+        try {
+          const d = await new Promise<number>((resolve) => {
+            const v = document.createElement('video')
+            v.preload = 'metadata'
+            v.src = fileUrl(p.id, src)
+            v.onloadedmetadata = () => resolve(v.duration || 2.5)
+            v.onerror = () => resolve(2.5)
+            setTimeout(() => resolve(2.5), 1500)
+          })
+          if (d > 0.05) dur = Number(d.toFixed(2))
+        } catch { /* fallback */ }
+      }
+    }
     update(prj => {
       const existingOverlays = prj.clips.filter(c => c.track === 'overlay')
       const maxZ = existingOverlays.reduce((m, c) => Math.max(m, c.z_order ?? 0), 0)
-      const end = prj.clips.filter(c => c.track === track).reduce((m, c) => Math.max(m, c.start + c.dur), 0)
-      const start = track === 'overlay' ? Math.max(0, time) : (prj.clips.length ? Math.max(end, 0) : Math.max(0, time))
+      const trackClips = prj.clips.filter(c => (c.track || 'video') === track)
+      const end = trackClips.reduce((m, c) => Math.max(m, c.start + c.dur), 0)
+      const start = track === 'overlay' ? Math.max(0, time) : (trackClips.length ? Math.max(end, 0) : Math.max(0, time))
       prj.clips.push({
         id: crypto.randomUUID().slice(0, 8),
         track,
         src,
         start,
-        dur: track === 'overlay' ? 2.0 : 2.5,
+        dur,
         in_point: 0,
         fit: 'cover',
         effect: 'none',
@@ -116,9 +138,13 @@ export default function Sidebar({
         y_pct: track === 'overlay' ? 30 : 50,
         scale_pct: track === 'overlay' ? 35 : 100,
         z_order: track === 'overlay' ? maxZ + 1 : 0,
+        crop_x: 50,
+        crop_y: 50,
+        crop_scale: 100,
       })
       return prj
     })
+  }
 
   const addStickerToProject = async (name: string) => {
     const res = await api.addSticker(p.id, name)

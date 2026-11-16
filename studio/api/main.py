@@ -4,6 +4,7 @@ from __future__ import annotations
 import shutil
 import time
 import re
+import subprocess
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile
@@ -94,22 +95,31 @@ async def render(pid: str, body: dict | None = None):
     export_dir = (body or {}).get("export_dir") or proj.export_dir
     quality = (body or {}).get("quality", "1080p")
     eco_mode = bool((body or {}).get("eco_mode", True))
+    raw_filename = ((body or {}).get("filename") or "").strip()
+
+    if raw_filename:
+        clean = re.sub(r'[\\/*?:"<>|]', "", raw_filename).strip()
+        if not clean.lower().endswith(".mp4"):
+            clean = f"{clean}.mp4"
+        filename = clean
+    else:
+        filename = f"{proj.name or proj.id}_{quality}.mp4".replace(" ", "_")
 
     target_out = None
     if export_dir and export_dir != "project":
         exp_path = Path(export_dir).expanduser().resolve()
         exp_path.mkdir(parents=True, exist_ok=True)
-        filename = f"{proj.name or proj.id}_{quality}.mp4".replace(" ", "_")
         target_out = exp_path / filename
+    else:
+        target_out = proj.dir / "out" / filename
 
     try:
         out = await run_in_threadpool(render_project, proj, target_out, quality, eco_mode)
     except Exception as e:
         raise HTTPException(400, str(e))
 
-    default_name = f"{proj.name or proj.id}_{quality}.mp4".replace(" ", "_")
     return {
-        "url": f"/files/{pid}/out/{default_name}",
+        "url": f"/files/{pid}/out/{Path(out).name}",
         "saved_path": str(out),
         "filename": Path(out).name,
     }
@@ -181,6 +191,29 @@ def list_media(pid: str):
     if not proj.media_dir.exists():
         return []
     return [f"media/{p.name}" for p in sorted(proj.media_dir.iterdir()) if p.is_file()]
+
+
+@app.get("/api/media-info/{pid}")
+def get_media_info(pid: str, src: str):
+    proj = _load(pid)
+    name = Path(src).name
+    dest = proj.media_dir / name
+    if not dest.exists():
+        raise HTTPException(404, "File media không tồn tại")
+    dur = 0.0
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(dest)
+        ]
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        if res.returncode == 0 and res.stdout.strip():
+            dur = float(res.stdout.strip())
+    except Exception:
+        pass
+    return {"duration": round(dur, 3)}
 
 
 @app.get("/api/stickers")
