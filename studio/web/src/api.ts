@@ -1,4 +1,4 @@
-import type { Meta, Project } from './types'
+import type { Meta, Project, SFXItem } from './types'
 
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -58,6 +58,7 @@ export const api = {
     return fetch(`/api/projects/${pid}/bgm`, { method: 'POST', body: fd }).then(r => j<Project>(r))
   },
   deleteBgm: (pid: string) => fetch(`/api/projects/${pid}/bgm`, { method: 'DELETE' }).then(r => j<Project>(r)),
+  sfx: () => fetch('/api/sfx').then(r => j<SFXItem[]>(r)),
 }
 
 export const fileUrl = (pid: string, src: string) => `/files/${pid}/${src}`

@@ -55,6 +55,17 @@ def group_words(words: list[Word], max_words: int) -> list[CaptionGroup]:
     return groups
 
 
+def hex_to_rgba(hex_color: str, default_alpha: int = 255) -> tuple[int, int, int, int]:
+    h = (hex_color or "").strip().lstrip("#")
+    if len(h) == 6:
+        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), default_alpha
+    elif len(h) == 8:
+        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), int(h[6:8], 16)
+    elif len(h) == 3:
+        return int(h[0] * 2, 16), int(h[1] * 2, 16), int(h[2] * 2, 16), default_alpha
+    return 0, 0, 0, default_alpha
+
+
 def render_group(proj: Project, group: CaptionGroup, dest: Path) -> None:
     st = proj.caption
     img = Image.new("RGBA", (proj.width, proj.height), (0, 0, 0, 0))
@@ -81,10 +92,32 @@ def render_group(proj: Project, group: CaptionGroup, dest: Path) -> None:
     line_h = int(st.size * 1.15)
     block_h = line_h * len(lines)
     y = int(proj.height * st.y_pct / 100 - block_h / 2)
+
+    pad_x = getattr(st, "box_padding", 20) or 20
+    pad_y = int(pad_x * 0.55)
+    box_style = getattr(st, "box_style", "none") or "none"
+    box_rgba = hex_to_rgba(getattr(st, "box_color", "#000000B0") or "#000000B0", 180)
+
     for line in lines:
         lw = sum(x[2] for x in line) + space * (len(line) - 1)
         x = (proj.width - lw) / 2
+
+        if box_style in ("pill", "card"):
+            rx0 = x - pad_x
+            ry0 = y - pad_y
+            rx1 = x + lw + pad_x
+            ry1 = y + line_h + pad_y
+            rad = int((ry1 - ry0) / 2) if box_style == "pill" else 18
+            draw.rounded_rectangle([rx0, ry0, rx1, ry1], radius=rad, fill=box_rgba)
+
         for text, color, wd in line:
+            if box_style == "highlight":
+                hx0 = x - pad_x * 0.5
+                hy0 = y - pad_y * 0.5
+                hx1 = x + wd + pad_x * 0.5
+                hy1 = y + line_h + pad_y * 0.5
+                draw.rounded_rectangle([hx0, hy0, hx1, hy1], radius=14, fill=box_rgba)
+
             draw.text(
                 (x, y), text, font=font, fill=color,
                 stroke_width=st.stroke_width, stroke_fill=st.stroke_color,

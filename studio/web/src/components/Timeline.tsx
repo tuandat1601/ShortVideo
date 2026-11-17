@@ -12,9 +12,10 @@ interface Props {
   onSelect: (id: string | null) => void
   onSeek: (t: number) => void
   update: (fn: (p: Project) => Project, record?: boolean) => void
+  onSplit?: (clipId?: string) => void
 }
 
-export default function Timeline({ project: p, time, selected, onSelect, onSeek, update }: Props) {
+export default function Timeline({ project: p, time, selected, onSelect, onSeek, update, onSplit }: Props) {
   const [pxPerSec, setPxPerSec] = useState<number>(() => {
     const saved = localStorage.getItem('studio_timeline_zoom')
     return saved ? Math.max(3, Math.min(300, Number(saved))) : 110
@@ -33,7 +34,7 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
   const width = total * pxPerSec + 120
   const wrap = useRef<HTMLDivElement>(null)
 
-  // Điểm bắt dính nam châm thông minh: mép các clip (đầu & đuôi), các đoạn thoại, câu, từ
+  // Điểm bắt dính nam châm thông minh: mép các clip (đầu & đuôi), các đoạn thoại, câu, từ, sfx
   const snaps = useMemo(() => {
     const s = [0]
     for (const c of p.clips) {
@@ -44,10 +45,14 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
       s.push(seg.start)
       s.push(Number((seg.start + seg.dur).toFixed(3)))
     }
+    for (const sfx of (p.sfx_clips ?? [])) {
+      s.push(sfx.start)
+      s.push(Number((sfx.start + sfx.dur).toFixed(3)))
+    }
     for (const w of p.words) if (/[.!?]$/.test(w.text.trim())) s.push(w.end)
     if (p.words.length) s.push(p.words[p.words.length - 1].end)
     return Array.from(new Set(s)).sort((a, b) => a - b)
-  }, [p.clips, p.voice_segments, p.words])
+  }, [p.clips, p.voice_segments, p.words, p.sfx_clips])
 
   const snap = (t: number) => {
     let best = t, d = SNAP
@@ -115,6 +120,68 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
       update(prj => prj, true) // chốt 1 bước undo
     }
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
+  }
+
+  const splitClip = (clipId?: string) => {
+    if (onSplit) {
+      onSplit(clipId)
+      return
+    }
+    const idToSplit = clipId || selected
+    let target = p.clips.find(c => c.id === idToSplit)
+    if (!target) {
+      target = p.clips.find(c => (c.track || 'video') === 'video' && time > c.start + 0.05 && time < c.start + c.dur - 0.05)
+    }
+    if (!target) return
+    if (time <= target.start + 0.05 || time >= target.start + target.dur - 0.05) return
+
+    const leftDur = Number((time - target.start).toFixed(3))
+    const rightDur = Number((target.dur - leftDur).toFixed(3))
+    if (leftDur < 0.1 || rightDur < 0.1) return
+    const speed = target.speed || 1.0
+    const newInPoint = Number(((target.in_point || 0) + leftDur * speed).toFixed(3))
+    const rightId = crypto.randomUUID().slice(0, 8)
+    const rightClip = {
+      ...target,
+      id: rightId,
+      start: Number(time.toFixed(3)),
+      dur: rightDur,
+      in_point: newInPoint,
+    }
+
+    update(prj => {
+      const idx = prj.clips.findIndex(c => c.id === target!.id)
+      if (idx !== -1) {
+        prj.clips[idx].dur = leftDur
+        prj.clips.splice(idx + 1, 0, rightClip)
+      }
+      return prj
+    }, true)
+    onSelect(rightId)
+  }
+
+  const dragSfxClip = (e: React.PointerEvent, id: string) => {
+    e.stopPropagation(); e.preventDefault()
+    onSelect(id)
+    const s0 = (p.sfx_clips ?? []).find(s => s.id === id)!
+    if (!s0) return
+    const x0 = e.clientX
+    const move = (ev: PointerEvent) => {
+      const dt = (ev.clientX - x0) / pxPerSec
+      const newStart = Math.max(0, snap(s0.start + dt))
+      update(prj => {
+        const item = (prj.sfx_clips ?? []).find(s => s.id === id)
+        if (item) item.start = Number(newStart.toFixed(3))
+        return prj
+      }, false)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      update(prj => prj, true)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
   }
 
   // Kéo dời đoạn thoại (Hỗ trợ từng đoạn voice_segment độc lập)
@@ -273,14 +340,23 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
           className="sticky top-0 z-30 flex h-6 cursor-ew-resize border-b border-white/10 bg-zinc-900 select-none"
           onPointerDown={startScrub}
         >
-          <div className="sticky left-0 shrink-0 z-30 flex items-center justify-between bg-zinc-900 border-r border-white/10 px-1.5 select-none" style={{ width: LABEL_W }}>
-            <button
-              onClick={e => { e.stopPropagation(); fitToScreen() }}
-              className="rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-400 hover:bg-zinc-700 hover:text-cyan-200 border border-cyan-500/30"
-              title="Co dãn toàn bộ video vừa khít màn hình (không cần cuộn)"
-            >
-              ↔ Vừa
-            </button>
+          <div className="sticky left-0 shrink-0 z-30 flex items-center justify-between bg-zinc-900 border-r border-white/10 px-1 select-none" style={{ width: LABEL_W }}>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={e => { e.stopPropagation(); fitToScreen() }}
+                className="rounded bg-zinc-800 px-1 py-0.5 text-[9px] font-semibold text-cyan-400 hover:bg-zinc-700 hover:text-cyan-200 border border-cyan-500/30"
+                title="Co dãn toàn bộ video vừa khít màn hình"
+              >
+                ↔ Vừa
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); splitClip() }}
+                className="rounded bg-zinc-800 px-1 py-0.5 text-[9px] font-semibold text-amber-400 hover:bg-zinc-700 hover:text-amber-200 border border-amber-500/30"
+                title="Cắt đôi clip tại kim thời gian (Phím S)"
+              >
+                ✂️ Cắt
+              </button>
+            </div>
             <div className="flex items-center gap-0.5">
               <button
                 onClick={e => {
@@ -486,6 +562,47 @@ export default function Timeline({ project: p, time, selected, onSelect, onSeek,
             </div>
           ) : (
             <span className="absolute top-2 left-3 text-[10px] text-zinc-600 italic">Chưa có nhạc nền (Thêm ở tab Nhạc BGM)</span>
+          )}
+        </Row>
+
+        {/* Track 6: Hiệu ứng âm thanh (SFX Track) */}
+        <Row label="🔊 SFX Âm thanh" h={36}>
+          {(p.sfx_clips && p.sfx_clips.length > 0) ? (
+            p.sfx_clips.map(sfx => (
+              <div
+                key={sfx.id}
+                onPointerDown={e => dragSfxClip(e, sfx.id)}
+                onClick={e => { e.stopPropagation(); onSelect(sfx.id) }}
+                className={`group absolute top-1 flex h-7 cursor-grab items-center justify-between rounded-md px-2 text-[11px] font-medium active:cursor-grabbing shadow-sm overflow-hidden select-none ${
+                  selected === sfx.id
+                    ? 'bg-rose-500 text-white ring-2 ring-rose-300'
+                    : 'bg-rose-600/80 text-rose-100 hover:bg-rose-600 ring-1 ring-rose-400/30'
+                }`}
+                style={{ left: sfx.start * pxPerSec, width: Math.max(sfx.dur * pxPerSec, 60) }}
+                title={`SFX: ${sfx.name} (${sfx.start.toFixed(2)}s - ${(sfx.start + sfx.dur).toFixed(2)}s)\nKéo để đổi mốc phát. Bấm để chọn.`}
+              >
+                <span className="truncate flex items-center gap-1 font-semibold">
+                  <span>🔔</span>
+                  <span className="truncate">{sfx.name}</span>
+                </span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation()
+                    update(prj => {
+                      prj.sfx_clips = (prj.sfx_clips ?? []).filter(s => s.id !== sfx.id)
+                      return prj
+                    }, true)
+                    if (selected === sfx.id) onSelect(null)
+                  }}
+                  className="ml-1 opacity-0 group-hover:opacity-100 hover:text-white rounded px-0.5 text-[10px] font-bold"
+                  title="Xóa âm thanh này"
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          ) : (
+            <span className="absolute top-2 left-3 text-[10px] text-zinc-600 italic">Thêm âm thanh Whoosh, Pop, Glitch... ở tab 🔊 SFX</span>
           )}
         </Row>
 

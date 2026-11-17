@@ -15,15 +15,41 @@ interface Props {
   playing: boolean
   onSeekAudio: (el: HTMLAudioElement | null) => void
   voiceVersion?: number
+  selectedClip?: string | null
+  onSelectClip?: (id: string) => void
+  onUpdateClipPos?: (id: string, x: number, y: number) => void
 }
 
-export default function Preview({ project: p, time, playing, onSeekAudio, voiceVersion = 0 }: Props) {
+export default function Preview({
+  project: p, time, playing, onSeekAudio, voiceVersion = 0,
+  selectedClip, onSelectClip, onUpdateClipPos,
+}: Props) {
   const box = useRef<HTMLDivElement>(null)
   const voiceAudio = useRef<HTMLAudioElement>(null)
   const bgmAudio = useRef<HTMLAudioElement>(null)
   const vids = useRef<Record<string, HTMLVideoElement | null>>({})
+  const lastSfxTrigger = useRef<Record<string, number>>({})
 
   useEffect(() => onSeekAudio(voiceAudio.current), [onSeekAudio])
+
+  // Phát hiệu ứng âm thanh SFX khi phát tới mốc thời gian
+  useEffect(() => {
+    if (!playing) return
+    const sfxList = p.sfx_clips || []
+    for (const sfx of sfxList) {
+      if (time >= sfx.start && time < sfx.start + 0.3) {
+        const last = lastSfxTrigger.current[sfx.id] || 0
+        if (Math.abs(time - last) > 0.6) {
+          lastSfxTrigger.current[sfx.id] = time
+          try {
+            const a = new Audio(sfx.src)
+            a.volume = Math.max(0, Math.min(1, sfx.volume ?? 0.8))
+            a.play().catch(() => {})
+          } catch { /* ignore */ }
+        }
+      }
+    }
+  }, [time, playing, p.sfx_clips])
 
   // Đồng bộ âm lượng BGM
   useEffect(() => {
@@ -31,6 +57,29 @@ export default function Preview({ project: p, time, playing, onSeekAudio, voiceV
       bgmAudio.current.volume = Math.min(Math.max(p.bgm_volume ?? 0.25, 0), 1)
     }
   }, [p.bgm_volume])
+
+  const handleDragOverlay = (e: React.PointerEvent, clipId: string) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onSelectClip?.(clipId)
+    const el = box.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+
+    const onMove = (ev: PointerEvent) => {
+      ev.preventDefault()
+      const nx = Math.max(5, Math.min(95, Math.round(((ev.clientX - rect.left) / rect.width) * 100)))
+      const ny = Math.max(5, Math.min(95, Math.round(((ev.clientY - rect.top) / rect.height) * 100)))
+      onUpdateClipPos?.(clipId, nx, ny)
+    }
+
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
 
   // Đồng bộ phát BGM mượt mà với Timeline (tự động bật khi chạy qua mốc offset và đồng bộ khi tua)
   useEffect(() => {
@@ -159,7 +208,22 @@ export default function Preview({ project: p, time, playing, onSeekAudio, voiceV
           <div className="pointer-events-none absolute inset-0 z-10 bg-black/75 transition-opacity duration-200" />
         )}
 
-        {/* 3. Track Lớp phủ / Icon / Sticker (Sắp xếp theo thứ tự lớp z_order) */}
+        {/* 2.5 Cinematic Depth Text (Chữ khổng lồ sau lưng nhân vật / lớp phủ) */}
+        {p.bg_text && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-10 flex -translate-y-1/2 justify-center px-4 text-center font-black tracking-widest select-none leading-none uppercase overflow-hidden"
+            style={{
+              top: `${p.bg_text_y_pct ?? 35}%`,
+              fontSize: (p.bg_text_size ?? 160) * scale,
+              color: p.bg_text_color || 'rgba(255, 255, 255, 0.12)',
+              fontFamily: FONT_CSS[st.font] ?? FONT_CSS.Impact,
+            }}
+          >
+            {p.bg_text}
+          </div>
+        )}
+
+        {/* 3. Track Lớp phủ / Icon / Sticker (Có thể KÉO THẢ TRỰC TIẾP TRÊN MÀN HÌNH PREVIEW) */}
         {overlayClips
           .slice()
           .sort((a, b) => (a.z_order ?? 0) - (b.z_order ?? 0))
@@ -171,11 +235,17 @@ export default function Preview({ project: p, time, playing, onSeekAudio, voiceV
           const leftPct = c.x_pct || 50
           const topPct = c.y_pct || 30
           const isSpot = c.dim_bg || c.effect === 'spotlight'
+          const isSelected = selectedClip === c.id
           const zIndex = 20 + (c.z_order ?? idx)
           return (
             <div
               key={c.id}
-              className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 transition-all ${
+              onPointerDown={e => handleDragOverlay(e, c.id)}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing select-none transition-shadow ${
+                isSelected
+                  ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-black/80 rounded-lg'
+                  : 'hover:ring-1 hover:ring-amber-400/50 rounded-lg'
+              } ${
                 isSpot ? 'drop-shadow-[0_15px_35px_rgba(0,0,0,0.9)] scale-105 duration-300' : 'drop-shadow-2xl'
               }`}
               style={{
@@ -184,32 +254,56 @@ export default function Preview({ project: p, time, playing, onSeekAudio, voiceV
                 width: `${widthPct}%`,
                 zIndex,
               }}
+              title="Kéo thả trực tiếp để chỉnh vị trí trên video"
             >
               {isImage(c.src) ? (
-                <img src={url} className="h-auto w-full object-contain" />
+                <img src={url} className="h-auto w-full object-contain pointer-events-none" />
               ) : (
-                <video src={url} muted playsInline autoPlay className="h-auto w-full object-contain" />
+                <video src={url} muted playsInline autoPlay className="h-auto w-full object-contain pointer-events-none" />
+              )}
+              {isSelected && (
+                <div className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-amber-400 shadow" />
               )}
             </div>
           )
         })}
 
-        {/* 4. Phụ đề từng từ */}
+        {/* 4. Phụ đề từng từ / Cụm từ (Hỗ trợ Nền Viên thuốc Pill, Card, Highlight) */}
         {group && (
           <div
-            className="pointer-events-none absolute left-0 right-0 z-30 flex -translate-y-1/2 flex-wrap justify-center px-[5%] text-center leading-[1.1] animate-in fade-in zoom-in-95 duration-100"
-            style={{
-              top: `${st.y_pct}%`, fontFamily: FONT_CSS[st.font] ?? FONT_CSS.Impact,
-              fontSize: st.size * scale, gap: `0 ${st.size * scale * 0.25}px`,
-              WebkitTextStroke: `${st.stroke_width * scale}px ${st.stroke_color}`, paintOrder: 'stroke fill',
-              textTransform: st.uppercase ? 'uppercase' : 'none',
-            }}
+            className="pointer-events-none absolute left-0 right-0 z-30 flex -translate-y-1/2 justify-center px-[5%] text-center animate-in fade-in zoom-in-95 duration-100"
+            style={{ top: `${st.y_pct}%` }}
           >
-            {group.words.map((w, i) => (
-              <span key={i} style={{ color: w.emph ? st.emph_color : st.color }} className={w.emph ? 'scale-105 inline-block' : 'inline-block'}>
-                {w.text}
-              </span>
-            ))}
+            <div
+              className={`inline-flex flex-wrap items-center justify-center transition-all ${
+                st.box_style === 'pill' ? 'rounded-full shadow-2xl' :
+                st.box_style === 'card' ? 'rounded-2xl shadow-2xl backdrop-blur-md' :
+                st.box_style === 'highlight' ? 'rounded-md shadow-md' : ''
+              }`}
+              style={{
+                fontFamily: FONT_CSS[st.font] ?? FONT_CSS.Impact,
+                fontSize: st.size * scale,
+                gap: `0 ${st.size * scale * 0.25}px`,
+                WebkitTextStroke: `${st.stroke_width * scale}px ${st.stroke_color}`,
+                paintOrder: 'stroke fill',
+                textTransform: st.uppercase ? 'uppercase' : 'none',
+                lineHeight: 1.15,
+                backgroundColor: (st.box_style && st.box_style !== 'none') ? (st.box_color || 'rgba(0,0,0,0.7)') : undefined,
+                padding: (st.box_style && st.box_style !== 'none')
+                  ? `${(st.box_padding ?? 10) * scale}px ${(st.box_padding ?? 10) * scale * (st.box_style === 'pill' ? 2 : 1.4)}px`
+                  : undefined,
+              }}
+            >
+              {group.words.map((w, i) => (
+                <span
+                  key={i}
+                  style={{ color: w.emph ? st.emph_color : st.color }}
+                  className={w.emph ? 'scale-105 inline-block font-extrabold' : 'inline-block'}
+                >
+                  {w.text}
+                </span>
+              ))}
+            </div>
           </div>
         )}
 

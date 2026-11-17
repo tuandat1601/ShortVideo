@@ -108,19 +108,63 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total, time])
 
+  const splitClipAtTime = useCallback((clipId?: string) => {
+    if (!project) return
+    const idToSplit = clipId || selected
+    let target = project.clips.find(c => c.id === idToSplit)
+    if (!target) {
+      target = project.clips.find(c => (c.track || 'video') === 'video' && time > c.start + 0.05 && time < c.start + c.dur - 0.05)
+    }
+    if (!target) return
+    if (time <= target.start + 0.05 || time >= target.start + target.dur - 0.05) return
+
+    const leftDur = Number((time - target.start).toFixed(3))
+    const rightDur = Number((target.dur - leftDur).toFixed(3))
+    if (leftDur < 0.1 || rightDur < 0.1) return
+    const speed = target.speed || 1.0
+    const newInPoint = Number(((target.in_point || 0) + leftDur * speed).toFixed(3))
+    const rightId = crypto.randomUUID().slice(0, 8)
+    const rightClip = {
+      ...target,
+      id: rightId,
+      start: Number(time.toFixed(3)),
+      dur: rightDur,
+      in_point: newInPoint,
+    }
+
+    update(prj => {
+      const idx = prj.clips.findIndex(c => c.id === target!.id)
+      if (idx !== -1) {
+        prj.clips[idx].dur = leftDur
+        prj.clips.splice(idx + 1, 0, rightClip)
+      }
+      return prj
+    }, true)
+    setSelected(rightId)
+  }, [project, selected, time, update])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return
       if (e.code === 'Space') { e.preventDefault(); toggle() }
       else if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo() }
+      else if (e.code === 'KeyS' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        splitClipAtTime()
+      }
       else if ((e.key === 'Delete' || e.key === 'Backspace') && selected) {
-        update(p => { p.clips = p.clips.filter(c => c.id !== selected); return p }); setSelected(null)
+        update(p => {
+          p.clips = p.clips.filter(c => c.id !== selected)
+          if (p.sfx_clips) p.sfx_clips = p.sfx_clips.filter(s => s.id !== selected)
+          return p
+        }, true)
+        setSelected(null)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [toggle, undo, redo, selected, update])
+  }, [toggle, undo, redo, selected, update, splitClipAtTime])
 
   const newProject = async () => {
     const name = prompt('Tên project mới?', 'Short mới')
@@ -302,6 +346,13 @@ export default function App() {
                   playing={playing}
                   onSeekAudio={el => { audio.current = el }}
                   voiceVersion={voiceVersion}
+                  selectedClip={selected}
+                  onSelectClip={setSelected}
+                  onUpdateClipPos={(id, x, y) => update(prj => {
+                    const c = prj.clips.find(clip => clip.id === id)
+                    if (c) { c.x_pct = x; c.y_pct = y }
+                    return prj
+                  })}
                 />
               </div>
               <div className="flex items-center justify-center gap-4 pb-3">
@@ -311,11 +362,26 @@ export default function App() {
               </div>
             </section>
             <aside className="min-h-0 border-l border-white/10 bg-zinc-900/40">
-              <Inspector project={project} meta={meta} selectedClip={selected} update={update} onOpenCrop={id => setCropClipId(id)} />
+              <Inspector
+                project={project}
+                meta={meta}
+                selectedClip={selected}
+                update={update}
+                onOpenCrop={id => setCropClipId(id)}
+                onSplit={splitClipAtTime}
+              />
             </aside>
           </main>
           <footer className="min-h-0 min-w-0 w-full overflow-hidden border-t border-white/10">
-            <Timeline project={project} time={time} selected={selected} onSelect={setSelected} onSeek={seek} update={update} />
+            <Timeline
+              project={project}
+              time={time}
+              selected={selected}
+              onSelect={setSelected}
+              onSeek={seek}
+              update={update}
+              onSplit={splitClipAtTime}
+            />
           </footer>
         </>
       ) : (

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, fileUrl } from '../api'
-import { isImage, isVideo, type Meta, type Project, type VoiceSegment } from '../types'
+import { isImage, isVideo, type Meta, type Project, type SFXItem, type VoiceSegment } from '../types'
 
 interface Props {
   project: Project
@@ -20,8 +20,11 @@ const input = 'w-full rounded-md border border-white/10 bg-zinc-800 px-2 py-1.5 
 export default function Sidebar({
   project: p, meta, media, refreshMedia, refreshMeta, update, onVoice, onAutoBroll, busy, time,
 }: Props) {
-  const [tab, setTab] = useState<'script' | 'media' | 'stickers' | 'bgm'>('script')
+  const [tab, setTab] = useState<'script' | 'media' | 'stickers' | 'bgm' | 'sfx'>('script')
   const [stickers, setStickers] = useState<string[]>([])
+  const [sfxItems, setSfxItems] = useState<SFXItem[]>([])
+  const [previewingSfx, setPreviewingSfx] = useState<string | null>(null)
+  const sfxAudio = useRef<HTMLAudioElement | null>(null)
   const file = useRef<HTMLInputElement>(null)
   const bgmFile = useRef<HTMLInputElement>(null)
   const voiceFile = useRef<HTMLInputElement>(null)
@@ -62,7 +65,41 @@ export default function Sidebar({
 
   useEffect(() => {
     api.stickers().then(setStickers).catch(() => {})
+    api.sfx().then(setSfxItems).catch(() => {})
   }, [])
+
+  const playSfx = (item: SFXItem) => {
+    if (previewingSfx === item.id) {
+      sfxAudio.current?.pause()
+      setPreviewingSfx(null)
+      return
+    }
+    setPreviewingSfx(item.id)
+    if (sfxAudio.current) {
+      sfxAudio.current.pause()
+    }
+    const a = new Audio(item.src)
+    sfxAudio.current = a
+    a.onended = () => setPreviewingSfx(null)
+    a.onerror = () => setPreviewingSfx(null)
+    a.play().catch(() => setPreviewingSfx(null))
+  }
+
+  const insertSfx = (item: SFXItem) => {
+    update(prj => {
+      const cur = prj.sfx_clips ?? []
+      cur.push({
+        id: crypto.randomUUID().slice(0, 8),
+        src: item.src,
+        name: item.name,
+        start: Number(time.toFixed(2)),
+        dur: item.dur,
+        volume: 0.8,
+      })
+      prj.sfx_clips = cur
+      return prj
+    }, true)
+  }
 
   const upload = async (files: FileList | null) => {
     if (!files) return
@@ -260,15 +297,15 @@ export default function Sidebar({
   return (
     <div className="flex h-full flex-col">
       <div className="flex border-b border-white/10 text-xs">
-        {(['script', 'media', 'stickers', 'bgm'] as const).map(t => (
+        {(['script', 'media', 'stickers', 'bgm', 'sfx'] as const).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 py-2.5 font-medium transition ${
+            className={`flex-1 py-2.5 font-medium transition text-center px-1 truncate ${
               tab === t ? 'border-b-2 border-violet-500 text-white font-semibold' : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
-            {t === 'script' ? `🎙️ Thoại (${segments.length})` : t === 'media' ? 'Media' : t === 'stickers' ? '🎨 Icon' : '🎵 Nhạc BGM'}
+            {t === 'script' ? `🎙️ Thoại` : t === 'media' ? 'Media' : t === 'stickers' ? '🎨 Icon' : t === 'bgm' ? '🎵 BGM' : '🔊 SFX'}
           </button>
         ))}
       </div>
@@ -560,7 +597,7 @@ export default function Sidebar({
             💡 Bạn có thể vào tab <b>Media</b> upload thêm bất kỳ file ảnh PNG trong suốt (logo, meme, ảnh comment) rồi bấm <b>+ Lớp phủ</b> để chèn vào video!
           </div>
         </div>
-      ) : (
+      ) : tab === 'bgm' ? (
         /* Tab Nhạc nền BGM */
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <input ref={bgmFile} type="file" hidden accept="audio/*" onChange={e => uploadBgm(e.target.files)} />
@@ -612,6 +649,69 @@ export default function Sidebar({
           <div className="rounded-lg bg-zinc-800/40 p-3 text-xs text-zinc-400 space-y-1">
             <p>💡 <b>Tự động hạ nhạc (Auto Ducking):</b></p>
             <p>Khi xuất video, nhạc nền sẽ được tự động hòa âm dịu dàng dưới giọng đọc để không lấn át tiếng nói.</p>
+          </div>
+        </div>
+      ) : (
+        /* Tab Hiệu ứng âm thanh SFX */
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="block text-xs font-semibold uppercase tracking-wider text-rose-400">🔊 Hiệu ứng SFX có sẵn</span>
+            <span className="rounded bg-rose-500/20 px-2 py-0.5 text-[10px] font-bold text-rose-300">
+              {sfxItems.length} âm thanh
+            </span>
+          </div>
+
+          <p className="text-[11px] text-zinc-400">
+            Bấm <b>+ Chèn tại kim</b> để đặt âm thanh vào timeline tại mốc thời gian hiện tại ({time.toFixed(2)}s):
+          </p>
+
+          <div className="space-y-2">
+            {sfxItems.map(item => {
+              const isPlaying = previewingSfx === item.id
+              return (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-lg border border-white/5 bg-zinc-800/60 p-2.5 hover:border-rose-500/40 transition"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <button
+                      onClick={() => playSfx(item)}
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold transition ${
+                        isPlaying ? 'bg-rose-500 text-white' : 'bg-zinc-700 text-zinc-200 hover:bg-rose-600 hover:text-white'
+                      }`}
+                      title={isPlaying ? 'Dừng' : 'Nghe thử'}
+                    >
+                      {isPlaying ? '⏸' : '▶'}
+                    </button>
+                    <div className="min-w-0">
+                      <div className="truncate text-xs font-semibold text-zinc-200">
+                        {item.name}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+                        <span className="capitalize text-rose-300">SFX Audio</span>
+                        <span>•</span>
+                        <span>{item.dur.toFixed(1)}s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => insertSfx(item)}
+                    className="shrink-0 rounded bg-rose-600/80 px-2.5 py-1 text-xs font-medium text-white hover:bg-rose-500 shadow active:scale-95 transition"
+                    title={`Chèn âm thanh này tại kim đỏ (${time.toFixed(2)}s)`}
+                  >
+                    + Chèn
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="rounded-lg bg-zinc-800/40 p-3 text-xs text-zinc-400 space-y-1.5 border border-white/5">
+            <p className="font-semibold text-zinc-300">💡 Mẹo dùng SFX:</p>
+            <p>• Kéo đầu kim đỏ tới từ hoặc icon quan trọng.</p>
+            <p>• Bấm <b>+ Chèn</b> để tạo điểm nhấn âm thanh vui tai thu hút người xem.</p>
+            <p>• Có thể kéo dời hoặc bấm phím <b>Delete</b> trên timeline để xóa.</p>
           </div>
         </div>
       )}

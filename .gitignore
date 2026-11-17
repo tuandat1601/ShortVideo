@@ -25,7 +25,8 @@ long-tieng/voice/*
 studio/projects/*/build/
 studio/projects/*/out/
 studio/projects/_preview/
-studio/projects/*/media/*.mp3
+studio/projects/*/media/*
+!studio/projects/*/media/.gitkeep
 **/*.mov
 **/*.mp4
 

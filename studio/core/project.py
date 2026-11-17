@@ -33,6 +33,10 @@ class CaptionStyle(BaseModel):
     max_words: int = 2           # số từ hiện cùng lúc
     uppercase: bool = False
     effect: Literal["none", "pop_in"] = "pop_in"
+    # Nền viên thuốc (Pill) & Hộp chữ nổi bật
+    box_style: Literal["none", "pill", "highlight", "card"] = "none"
+    box_color: str = "#000000B0"
+    box_padding: int = 20
 
 
 class VoiceSettings(BaseModel):
@@ -80,6 +84,16 @@ class Clip(BaseModel):
     speed: float = 1.0            # Tốc độ phát (1.0 = chuẩn, 2.0 = 2x, 10.0 = 10x tua nhanh timelapse)
 
 
+class SFXClip(BaseModel):
+    """Âm thanh hiệu ứng SFX (Whoosh, Pop, Ding, Glitch...) trên timeline."""
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex[:8])
+    src: str                      # đường dẫn file trong assets/sfx/ hoặc media/
+    name: str = "SFX"
+    start: float = 0.0            # vị trí trên timeline
+    dur: float = 0.5              # thời lượng âm thanh
+    volume: float = 0.8           # âm lượng
+
+
 class Project(BaseModel):
     id: str
     name: str = "Untitled"
@@ -98,6 +112,12 @@ class Project(BaseModel):
     bgm_offset: float = 0.0         # mốc bắt đầu BGM trên timeline (giây)
     export_dir: str | None = None   # thư mục xuất file tùy chọn (vd "~/Downloads", "~/Desktop")
     clips: list[Clip] = Field(default_factory=list)
+    sfx_clips: list[SFXClip] = Field(default_factory=list)
+    # Chữ khổng lồ sau lưng (Cinematic depth text)
+    bg_text: str = ""
+    bg_text_size: int = 240
+    bg_text_color: str = "#FFFFFF1A"
+    bg_text_y_pct: float = 40.0
 
     # ---- đường dẫn ----
     @property
@@ -118,6 +138,7 @@ class Project(BaseModel):
             [w.end for w in self.words]
             + [s.start + s.dur for s in self.voice_segments]
             + [c.start + c.dur for c in self.clips]
+            + [s.start + s.dur for s in self.sfx_clips]
         )
         return max(ends) if ends else 0.0
 

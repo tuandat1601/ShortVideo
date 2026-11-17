@@ -7,6 +7,7 @@ interface Props {
   selectedClip: string | null
   update: (fn: (p: Project) => Project, record?: boolean) => void
   onOpenCrop?: (clipId: string) => void
+  onSplit?: (clipId?: string) => void
 }
 
 const Field = ({ label, children }: { label: string; children: ReactNode }) => (
@@ -17,11 +18,57 @@ const Field = ({ label, children }: { label: string; children: ReactNode }) => (
 )
 const input = 'w-full rounded-md border border-white/10 bg-zinc-800 px-2 py-1.5 text-sm outline-none focus:border-violet-500'
 
-export default function Inspector({ project: p, meta, selectedClip, update, onOpenCrop }: Props) {
+export default function Inspector({ project: p, meta, selectedClip, update, onOpenCrop, onSplit }: Props) {
   const c = p.clips.find(x => x.id === selectedClip)
+  const sfx = (p.sfx_clips ?? []).find(x => x.id === selectedClip)
   const cap = p.caption
   const setCap = <K extends keyof Project['caption']>(k: K, v: Project['caption'][K]) =>
     update(prj => { prj.caption[k] = v; return prj })
+
+  const applyPreset = (preset: string) => {
+    update(prj => {
+      if (preset === 'tiktok') {
+        prj.caption.font = 'TheBoldFont'
+        prj.caption.color = '#ffffff'
+        prj.caption.emph_color = '#facc15'
+        prj.caption.stroke_color = '#000000'
+        prj.caption.stroke_width = 12
+        prj.caption.uppercase = true
+        prj.caption.box_style = 'none'
+      } else if (preset === 'pill') {
+        prj.caption.font = 'Montserrat'
+        prj.caption.color = '#ffffff'
+        prj.caption.emph_color = '#22d3ee'
+        prj.caption.stroke_color = '#000000'
+        prj.caption.stroke_width = 0
+        prj.caption.uppercase = false
+        prj.caption.box_style = 'pill'
+        prj.caption.box_color = '#000000aa'
+        prj.caption.box_padding = 12
+      } else if (preset === 'cyber') {
+        prj.caption.font = 'Impact'
+        prj.caption.color = '#00ffff'
+        prj.caption.emph_color = '#ff007f'
+        prj.caption.stroke_color = '#000000'
+        prj.caption.stroke_width = 8
+        prj.caption.uppercase = true
+        prj.caption.box_style = 'card'
+        prj.caption.box_color = '#0f172acc'
+        prj.caption.box_padding = 14
+      } else if (preset === 'highlight') {
+        prj.caption.font = 'Montserrat'
+        prj.caption.color = '#000000'
+        prj.caption.emph_color = '#ef4444'
+        prj.caption.stroke_color = '#ffffff'
+        prj.caption.stroke_width = 0
+        prj.caption.uppercase = true
+        prj.caption.box_style = 'highlight'
+        prj.caption.box_color = '#facc15ee'
+        prj.caption.box_padding = 8
+      }
+      return prj
+    }, true)
+  }
 
   const setPos = (x: number, y: number) => {
     if (!c) return
@@ -34,6 +81,51 @@ export default function Inspector({ project: p, meta, selectedClip, update, onOp
 
   return (
     <div className="h-full overflow-y-auto p-4 text-sm">
+      {sfx ? (
+        <div className="mb-4 rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-rose-400">
+              🔊 Hiệu ứng SFX
+            </h3>
+            <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
+              {sfx.dur.toFixed(1)}s
+            </span>
+          </div>
+
+          <div className="truncate rounded bg-zinc-800 px-2 py-1.5 text-xs font-semibold text-zinc-200">
+            🔔 {sfx.name}
+          </div>
+
+          <div>
+            <div className="flex justify-between text-xs text-zinc-400 mb-1">
+              <span>Âm lượng SFX</span>
+              <span>{Math.round((sfx.volume ?? 0.8) * 100)}%</span>
+            </div>
+            <input
+              type="range" min={0.0} max={1.0} step={0.05}
+              value={sfx.volume ?? 0.8}
+              onChange={e => update(prj => {
+                const item = (prj.sfx_clips ?? []).find(s => s.id === sfx.id)
+                if (item) item.volume = +e.target.value
+                return prj
+              })}
+              className="w-full accent-rose-500"
+            />
+          </div>
+
+          <button
+            className="w-full rounded-md bg-rose-600/80 py-1.5 text-xs font-medium hover:bg-rose-600 text-white"
+            onClick={() => update(prj => {
+              prj.sfx_clips = (prj.sfx_clips ?? []).filter(s => s.id !== sfx.id)
+              return prj
+            }, true)}
+          >
+            Xóa âm thanh này
+          </button>
+          <hr className="my-2 border-white/10" />
+        </div>
+      ) : null}
+
       {c ? (
         <>
           <div className="mb-2 flex items-center justify-between">
@@ -364,13 +456,64 @@ export default function Inspector({ project: p, meta, selectedClip, update, onOp
             </div>
           )}
 
-          <button className="w-full rounded-md bg-rose-600/80 py-1.5 text-xs font-medium hover:bg-rose-600"
-            onClick={() => update(prj => { prj.clips = prj.clips.filter(x => x.id !== c.id); return prj })}>
-            Xóa {c.track === 'overlay' ? 'Icon' : 'Clip'}
-          </button>
+          <div className="flex gap-2">
+            {onSplit && (
+              <button
+                type="button"
+                className="flex-1 rounded-md bg-amber-600/80 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 transition shadow"
+                onClick={() => onSplit(c.id)}
+                title="Cắt đôi clip này tại vị trí kim thời gian đỏ (Phím S)"
+              >
+                ✂️ Cắt clip đôi (S)
+              </button>
+            )}
+            <button
+              className="flex-1 rounded-md bg-rose-600/80 py-1.5 text-xs font-medium hover:bg-rose-600 text-white transition"
+              onClick={() => update(prj => { prj.clips = prj.clips.filter(x => x.id !== c.id); return prj }, true)}
+            >
+              Xóa {c.track === 'overlay' ? 'Icon' : 'Clip'}
+            </button>
+          </div>
           <hr className="my-5 border-white/10" />
         </>
       ) : null}
+
+      {/* MẪU CHỮ PRESET 1-CLICK */}
+      <div className="mb-4">
+        <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-violet-400">
+          🎨 Mẫu chữ 1-Click (Presets)
+        </span>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => applyPreset('tiktok')}
+            className="rounded-lg border border-yellow-500/30 bg-yellow-950/20 px-2 py-1.5 text-xs font-bold text-yellow-300 hover:bg-yellow-900/40 text-left transition"
+          >
+            🔥 TikTok Pop
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('pill')}
+            className="rounded-lg border border-cyan-500/30 bg-cyan-950/20 px-2 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-900/40 text-left transition"
+          >
+            💊 Viên thuốc Pill
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('cyber')}
+            className="rounded-lg border border-fuchsia-500/30 bg-fuchsia-950/20 px-2 py-1.5 text-xs font-bold text-fuchsia-300 hover:bg-fuchsia-900/40 text-left transition"
+          >
+            💎 Cyber Card
+          </button>
+          <button
+            type="button"
+            onClick={() => applyPreset('highlight')}
+            className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-2 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-900/40 text-left transition"
+          >
+            ✨ Dạ quang Box
+          </button>
+        </div>
+      </div>
 
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-violet-400">Chữ (caption)</h3>
       <Field label="Font">
@@ -378,6 +521,42 @@ export default function Inspector({ project: p, meta, selectedClip, update, onOp
           {(meta?.fonts ?? [cap.font]).map(f => <option key={f}>{f}</option>)}
         </select>
       </Field>
+
+      {/* NỀN VIỀN CHỮ (BOX / BADGE STYLE) */}
+      <Field label="🏷️ Nền viền chữ (Badge / Box)">
+        <select
+          className={input}
+          value={cap.box_style || 'none'}
+          onChange={e => setCap('box_style', e.target.value as any)}
+        >
+          <option value="none">Không có nền (Chữ trơn)</option>
+          <option value="pill">💊 Viên thuốc bo tròn (Pill Badge)</option>
+          <option value="card">🗂️ Hộp thẻ bo góc (Card Box)</option>
+          <option value="highlight">🖍️ Dạ quang nổi bật (Highlight)</option>
+        </select>
+      </Field>
+
+      {cap.box_style && cap.box_style !== 'none' && (
+        <div className="mb-3 space-y-2 rounded-lg border border-white/5 bg-zinc-800/40 p-2.5">
+          <Field label={`Độ rộng lề hộp ${cap.box_padding ?? 12}px`}>
+            <input
+              type="range" min={4} max={28} className="w-full accent-violet-500"
+              value={cap.box_padding ?? 12}
+              onChange={e => setCap('box_padding', +e.target.value)}
+            />
+          </Field>
+          <Field label="Màu nền hộp (Hex / RGBA)">
+            <input
+              type="text"
+              placeholder="#000000b0"
+              className={input}
+              value={cap.box_color || '#000000b0'}
+              onChange={e => setCap('box_color', e.target.value)}
+            />
+          </Field>
+        </div>
+      )}
+
       <Field label={`Cỡ chữ ${cap.size}px`}>
         <input type="range" min={40} max={220} className="w-full accent-violet-500" value={cap.size} onChange={e => setCap('size', +e.target.value)} />
       </Field>
@@ -407,6 +586,54 @@ export default function Inspector({ project: p, meta, selectedClip, update, onOp
         <input type="color" className="h-8 w-full cursor-pointer rounded bg-transparent" value={p.bg_color}
           onChange={e => update(prj => { prj.bg_color = e.target.value; return prj })} />
       </Field>
+
+      {/* CHỮ KHỔNG LỒ SAU LƯNG (CINEMATIC DEPTH TEXT) */}
+      <hr className="my-5 border-white/10" />
+
+      <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-violet-400">
+        🎬 Chữ khổng lồ sau lưng (Depth Text)
+      </h3>
+      <p className="mb-3 text-[11px] text-zinc-400">
+        Hiển thị chữ to mờ chạy ngầm sau lưng nhân vật / sticker:
+      </p>
+
+      <Field label="Nội dung chữ sau lưng">
+        <input
+          type="text"
+          className={input}
+          placeholder="vd: DEVLOG, STORY, DESIGN..."
+          value={p.bg_text || ''}
+          onChange={e => update(prj => { prj.bg_text = e.target.value; return prj })}
+        />
+      </Field>
+
+      {p.bg_text && (
+        <div className="space-y-3 rounded-lg border border-white/5 bg-zinc-800/40 p-2.5">
+          <Field label={`Cỡ chữ sau lưng ${p.bg_text_size ?? 160}px`}>
+            <input
+              type="range" min={60} max={320} step={5} className="w-full accent-violet-500"
+              value={p.bg_text_size ?? 160}
+              onChange={e => update(prj => { prj.bg_text_size = +e.target.value; return prj })}
+            />
+          </Field>
+          <Field label={`Vị trí dọc ${p.bg_text_y_pct ?? 35}%`}>
+            <input
+              type="range" min={10} max={90} className="w-full accent-violet-500"
+              value={p.bg_text_y_pct ?? 35}
+              onChange={e => update(prj => { prj.bg_text_y_pct = +e.target.value; return prj })}
+            />
+          </Field>
+          <Field label="Màu chữ sau lưng (RGBA / Hex)">
+            <input
+              type="text"
+              className={input}
+              placeholder="#ffffff1e"
+              value={p.bg_text_color || '#ffffff1e'}
+              onChange={e => update(prj => { prj.bg_text_color = e.target.value; return prj })}
+            />
+          </Field>
+        </div>
+      )}
     </div>
   )
 }

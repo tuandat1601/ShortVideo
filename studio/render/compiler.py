@@ -124,6 +124,29 @@ def build_command(
         )
         last = out_lbl
 
+    # 1.5. Chữ khổng lồ sau lưng (Cinematic Depth Text)
+    bg_text = getattr(proj, "bg_text", "") or ""
+    if bg_text.strip():
+        safe_txt = bg_text.replace("'", "").replace(":", "").upper()
+        bg_size = getattr(proj, "bg_text_size", 240) or 240
+        bg_col = getattr(proj, "bg_text_color", "#FFFFFF1A") or "#FFFFFF1A"
+        bg_y = getattr(proj, "bg_text_y_pct", 40.0) or 40.0
+        h_col = bg_col.lstrip("#")
+        alpha_f = 0.12
+        if len(h_col) == 8:
+            alpha_f = int(h_col[6:8], 16) / 255.0
+            hex_c = h_col[:6]
+        else:
+            hex_c = h_col[:6] if len(h_col) >= 6 else "FFFFFF"
+        font_path = "/System/Library/Fonts/Supplemental/Impact.ttf"
+        font_param = f":fontfile='{font_path}'" if Path(font_path).exists() else ""
+        txt_filter = (
+            f"[{last}]drawtext=text='{safe_txt}'{font_param}:fontsize={bg_size}:"
+            f"fontcolor={hex_c}@{alpha_f:.2f}:x=(w-text_w)/2:y=(h-text_h)*{bg_y:.2f}/100[v_bg_text]"
+        )
+        filters.append(txt_filter)
+        last = "v_bg_text"
+
     # 2. Overlay / Icon / Sticker track (z_order nhỏ vẽ trước, z_order lớn vẽ sau -> đè lên trên)
     for clip in sorted(overlay_clips, key=lambda c: (getattr(c, "z_order", 0) or 0, c.start)):
         src = proj.dir / clip.src
@@ -183,11 +206,13 @@ def build_command(
             filters.append(f"[{last}][{ci}:v]overlay=eof_action=pass:format=auto[vout]")
         last = "vout"
 
-    # 4. Audio: Voice & BGM
+    # 4. Audio: Voice, SFX & BGM
     has_voice = bool(proj.voice_file and (proj.dir / proj.voice_file).exists())
     has_bgm = bool(proj.bgm_file and (proj.dir / proj.bgm_file).exists())
+    sfx_clips = getattr(proj, "sfx_clips", []) or []
     out_a = None
 
+    voice_lbl = None
     if has_voice:
         cmd += ["-i", str(proj.dir / proj.voice_file)]
         vi = n_in
@@ -200,6 +225,22 @@ def build_command(
         else:
             voice_lbl = f"{vi}:a"
 
+    # Âm thanh hiệu ứng SFX (Whoosh, Pop, Ding, Glitch...)
+    sfx_labels = []
+    for sfx in sfx_clips:
+        sfx_path = proj.dir / sfx.src
+        if not sfx_path.exists():
+            sfx_path = Path(__file__).resolve().parents[1] / sfx.src
+        if sfx_path.exists():
+            cmd += ["-i", str(sfx_path)]
+            si = n_in
+            n_in += 1
+            s_ms = max(0, int(round(sfx.start * 1000)))
+            vol = getattr(sfx, "volume", 0.8) or 0.8
+            filters.append(f"[{si}:a]volume={vol:.2f},adelay={s_ms}|{s_ms}[sfx_{si}]")
+            sfx_labels.append(f"sfx_{si}")
+
+    bgm_lbl = None
     if has_bgm:
         cmd += ["-stream_loop", "-1", "-i", str(proj.dir / proj.bgm_file)]
         bi = n_in
@@ -209,20 +250,25 @@ def build_command(
         if bgm_offset > 0:
             b_ms = int(bgm_offset * 1000)
             filters.append(f"[{bi}:a]volume={bgm_vol:.2f},adelay={b_ms}|{b_ms}[bgm_a]")
+            bgm_lbl = "bgm_a"
         else:
             filters.append(f"[{bi}:a]volume={bgm_vol:.2f}[bgm_a]")
-        bgm_lbl = "bgm_a"
+            bgm_lbl = "bgm_a"
 
-    if has_voice and has_bgm:
-        filters.append(f"[{voice_lbl}][{bgm_lbl}]amix=inputs=2:duration=longest:normalize=0[aout]")
+    # Hòa âm tất cả các luồng âm thanh
+    all_mix = []
+    if voice_lbl:
+        all_mix.append(f"[{voice_lbl}]")
+    for sl in sfx_labels:
+        all_mix.append(f"[{sl}]")
+    if bgm_lbl:
+        all_mix.append(f"[{bgm_lbl}]")
+
+    if len(all_mix) > 1:
+        filters.append(f"{''.join(all_mix)}amix=inputs={len(all_mix)}:duration=longest:normalize=0[aout]")
         out_a = "[aout]"
-    elif has_voice:
-        if voice_offset > 0:
-            out_a = "[v_a]"
-        else:
-            out_a = f"{vi}:a"
-    elif has_bgm:
-        out_a = "[bgm_a]"
+    elif len(all_mix) == 1:
+        out_a = all_mix[0]
 
     if filters:
         cmd += ["-filter_complex", ";".join(filters), "-map", f"[{last}]"]

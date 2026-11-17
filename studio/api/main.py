@@ -22,6 +22,10 @@ app.add_middleware(
 PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/files", StaticFiles(directory=str(PROJECTS_DIR)), name="files")
 
+_assets_dir = Path(__file__).resolve().parents[1] / "assets"
+if _assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+
 
 def _load(pid: str) -> Project:
     try:
@@ -222,6 +226,33 @@ def list_stickers():
     if not p.exists():
         return []
     return [f.name for f in sorted(p.glob("*.png"))]
+
+
+@app.get("/api/sfx")
+def list_sfx():
+    sfx_dir = Path(__file__).resolve().parents[1] / "assets" / "sfx"
+    if not sfx_dir.exists():
+        return []
+    items = []
+    labels = {
+        "whoosh.wav": "💨 Whoosh (Chuyển cảnh vù)",
+        "pop.wav": "🫧 Pop (Bong bóng / Icon nảy)",
+        "ding.wav": "🔔 Ding (Ting ting điểm nhấn)",
+        "camera.wav": "📸 Camera (Chụp ảnh tách)",
+        "glitch.wav": "⚡ Glitch (Nhiễu sóng điện tử)",
+        "thud.wav": "💥 Thud (Va chạm trầm bass)",
+        "keyboard.wav": "⌨️ Keyboard (Gõ phím lách cách)",
+    }
+    for p in sorted(sfx_dir.glob("*.wav")):
+        items.append({
+            "id": p.stem,
+            "filename": p.name,
+            "name": labels.get(p.name, p.stem.title()),
+            "src": f"assets/sfx/{p.name}",
+            "url": f"/assets/sfx/{p.name}",
+            "dur": 0.4,
+        })
+    return items
 
 
 @app.post("/api/projects/{pid}/add-sticker/{name}")

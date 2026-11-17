@@ -3,6 +3,9 @@ export interface CaptionStyle {
   font: string; size: number; color: string; emph_color: string; stroke_color: string;
   stroke_width: number; y_pct: number; max_words: number; uppercase: boolean;
   effect: 'none' | 'pop_in';
+  box_style?: 'none' | 'pill' | 'highlight' | 'card';
+  box_color?: string;
+  box_padding?: number;
 }
 export interface VoiceSettings { engine: string; voice: string; speed: number; style: string; offset?: number }
 export interface VoiceSegment {
@@ -16,6 +19,22 @@ export interface VoiceSegment {
   dur: number;
   file?: string | null;
   words: Word[];
+}
+export interface SFXItem {
+  id: string;
+  filename: string;
+  name: string;
+  src: string;
+  url: string;
+  dur: number;
+}
+export interface SFXClip {
+  id: string;
+  src: string;
+  name: string;
+  start: number;
+  dur: number;
+  volume: number;
 }
 export interface Clip {
   id: string; track: 'video' | 'overlay'; src: string; start: number; dur: number; in_point: number;
@@ -42,6 +61,11 @@ export interface Project {
   bgm_offset?: number;
   export_dir?: string | null;
   clips: Clip[];
+  sfx_clips?: SFXClip[];
+  bg_text?: string;
+  bg_text_size?: number;
+  bg_text_color?: string;
+  bg_text_y_pct?: number;
 }
 export interface ExportPreset {
   id: string;
