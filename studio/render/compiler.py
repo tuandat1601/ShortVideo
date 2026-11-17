@@ -228,10 +228,12 @@ def build_command(
     # Âm thanh hiệu ứng SFX (Whoosh, Pop, Ding, Glitch...)
     sfx_labels = []
     for sfx in sfx_clips:
-        sfx_path = proj.dir / sfx.src
+        rel_src = sfx.src.lstrip("/")
+        sfx_path = proj.dir / rel_src
         if not sfx_path.exists():
-            sfx_path = Path(__file__).resolve().parents[1] / sfx.src
-        if sfx_path.exists():
+            sfx_path = Path(__file__).resolve().parents[1] / rel_src.replace("studio-assets/", "assets/")
+        if not sfx_path.exists():
+            sfx_path = Path(__file__).resolve().parents[1] / "assets" / "sfx" / Path(sfx.src).name
             cmd += ["-i", str(sfx_path)]
             si = n_in
             n_in += 1

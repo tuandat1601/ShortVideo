@@ -24,7 +24,7 @@ app.mount("/files", StaticFiles(directory=str(PROJECTS_DIR)), name="files")
 
 _assets_dir = Path(__file__).resolve().parents[1] / "assets"
 if _assets_dir.exists():
-    app.mount("/assets", StaticFiles(directory=str(_assets_dir)), name="assets")
+    app.mount("/studio-assets", StaticFiles(directory=str(_assets_dir)), name="studio_assets")
 
 
 def _load(pid: str) -> Project:
@@ -248,8 +248,8 @@ def list_sfx():
             "id": p.stem,
             "filename": p.name,
             "name": labels.get(p.name, p.stem.title()),
-            "src": f"assets/sfx/{p.name}",
-            "url": f"/assets/sfx/{p.name}",
+            "src": f"/studio-assets/sfx/{p.name}",
+            "url": f"/studio-assets/sfx/{p.name}",
             "dur": 0.4,
         })
     return items
